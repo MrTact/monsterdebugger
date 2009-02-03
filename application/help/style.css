@@ -1,0 +1,69 @@
+* {
+	margin: 0;
+	padding: 0;
+}
+
+html, body {
+	font-family: Verdana, Arial, sans-serif;
+	font-size: 11px;
+	padding: 5px;
+	color: #000000;
+	line-height: 18px;
+}
+
+table {
+	font-family: Verdana, Arial, sans-serif;
+	font-size: 11px;
+	line-height: 18px;
+}
+
+h2 {
+	margin-bottom: 20px;
+	font-size: 14px;
+}
+
+img {
+	border: 20px solid #000000;	
+}
+
+a {
+	color: #777777;
+	text-decoration: underline;
+}
+
+.code {
+	overflow: hidden;
+	font-family: "Courier New", Courier, monospace;
+	background-color: #EEEEEE;
+	padding: 10px;
+	margin-bottom: 15px;
+}
+
+.icon {
+	border: none;	
+}
+
+.list {
+	margin-left: 20px;
+}
+
+.list li {
+	list-style: disc;
+}
+
+.navigation {
+	margin-left: 0px;
+	line-height: 22px;
+}
+
+.navigation li {
+	list-style: none;
+}
+
+.navigation .subnavigation {
+	margin-left: 7px;
+}
+
+.navigation .subnavigation li {
+	list-style: none;
+}

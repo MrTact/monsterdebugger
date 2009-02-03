@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Window xmlns:mx="http://www.adobe.com/2006/mxml" title="De MonsterDebugger - Trace" name="TraceWindow" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" creationComplete="creationComplete()" width="760" height="500" minWidth="380" minHeight="285">
+
+	<mx:Script>
+		<![CDATA[
+
+			
+			// Import classes
+			import mx.events.MenuEvent;
+			import mx.events.FlexNativeMenuEvent;
+			import mx.collections.XMLListCollection;
+			
+			
+			// Icons
+			[Bindable] [Embed(source="icons/bullet_blue.png")] public var iconDefault:Class;
+			[Bindable] [Embed(source="icons/box.png")] public var iconRoot:Class; 
+			[Bindable] [Embed(source="icons/error.png")] public var iconWarning:Class; 
+			[Bindable] [Embed(source="icons/bullet_blue.png")] public var iconVariable:Class; 
+			[Bindable] [Embed(source="icons/bullet_key.png")] public var iconVariableReadonly:Class; 
+			[Bindable] [Embed(source="icons/bullet_key.png")] public var iconVariableWriteonly:Class; 
+			[Bindable] [Embed(source="icons/tag.png")] public var iconXMLNode:Class; 
+			[Bindable] [Embed(source="icons/tag.png")] public var iconXMLValue:Class; 
+			[Bindable] [Embed(source="icons/tag_blue.png")] public var iconXMLAttribute:Class; 
+			[Bindable] [Embed(source="icons/lightning.png")] public var iconFunction:Class;
+			[Bindable] [Embed(source="icons/bullet_wrench.png")] public var iconEdit:Class;
+			[Bindable] [Embed(source="icons/bullet_black.png")] public var iconLock:Class;
+			[Bindable] [Embed(source="icons/disk.png")] public var iconSave:Class;
+			
+			
+			// Bindables
+			[Bindable] private var xml:XMLListCollection = new XMLListCollection();
+			
+			
+			// The item to show
+			private var _line:int = 0;
+			private var _time:String = "";
+			private var _target:String = "";
+			private var _message:String = "";
+			private var _xml:XML = new XML();
+						
+			
+			/**
+			 * Set the data in the trace window
+			 * @param item: The object containing all the data
+			 */ 
+			public function setData(item:Object):void
+			{
+				// Save the item
+				_line 		= item.line;
+				_time 		= item.time;
+				_target 	= item.target;
+				_message 	= item.message;
+				_xml 		= item.xml;
+			}
+			
+			
+			/**
+			 * The application is ready
+			 */
+			private function creationComplete():void
+			{
+				// Hide by default
+				textArea.visible = false;
+				tree.visible = false;
+				
+				// Check if we should use a tree object or a textfield
+				if (_xml.node.children().length() == 0)
+				{
+					// Set the textfield
+					textArea.text = unescape(_xml.node.@label);
+					textArea.visible = true;
+				}
+				else
+				{
+	       			// Set the tree item
+	       			xml.source = null;
+					xml.source = _xml.children();
+					tree.openItems = _xml.children();
+					tree.visible = true;
+				}
+			}
+			
+		]]>	
+	</mx:Script>
+	
+	<mx:Panel width="100%" height="100%"/>
+	<mx:Label text="TRACE DETAILS" fontWeight="bold" x="10" y="8" fontSize="11"/>
+	<mx:TextArea id="textArea" visible="false" top="30" left="3" right="3" bottom="3"/>
+	<mx:Tree id="tree" dataProvider="{xml}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" visible="false" top="32" left="5" right="5" bottom="5"/>
+	
+</mx:Window>

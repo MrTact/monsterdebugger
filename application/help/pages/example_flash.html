@@ -1,0 +1,68 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title></title>
+		<link rel="stylesheet" href="../style.css" type="text/css" media="screen"/>
+	</head>
+	<body>
+	
+<h2>Example: Flash</h2>
+<strong>#1</strong> Start a new Actionscript 3 project<br/><br/>
+<img src="../images/new_flash_project.jpg"/><br/><br/>
+<br/>	
+<strong>#2</strong> Create a document class<br/><br/>
+<div class="code">
+<pre>
+package {
+	
+	import flash.display.Sprite;
+	
+	public class Main extends Sprite {
+		
+		public function Main() {
+			// Do something
+		}
+	}
+}
+</pre>
+</div>
+<br/>
+<strong>#3</strong> Start De MonsterDebugger and export the client class<br/><br/>
+<img src="../images/export_class.jpg"/><br/><br/>
+<br/>	
+<strong>#4</strong> Include De MonsterDebugger class in your document class<br/><br/>
+<div class="code">
+<pre>
+package {
+	
+	import flash.display.Sprite;
+	import nl.demonsters.debugger.MonsterDebugger;
+	
+	public class Main extends Sprite {
+		
+		// Variable to hold the debugger
+		// This is needed to explore your live application
+		private var debugger:DMonsterDebugger;
+		
+		public function Main() {
+		
+			// Init the debugger
+			debugger = new MonsterDebugger(this);
+			
+			// Send a simple trace
+			MonsterDebugger.trace(this, "Hello World!")
+		}
+	}
+}
+</pre>
+</div>
+<br/>
+<strong>#5</strong> Run your application<br/><br/>
+<img src="../images/first_trace.jpg"/><br/><br/>	
+<br/>
+<strong>More information:</strong><br/>
+<a href="live_application.html">Exploring your application</a><br/>
+<a href="traces.html">Sending traces</a><br/>
+
+	</body>
+</html>

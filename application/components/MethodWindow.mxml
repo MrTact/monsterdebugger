@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Window xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:components="components.*" title="De MonsterDebugger - Method" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" creationComplete="creationComplete()" width="760" height="500" minWidth="380" minHeight="285" verticalScrollPolicy="off" horizontalScrollPolicy="off">
+
+	<mx:Script>
+		<![CDATA[
+
+			
+			// Import classes
+			import mx.events.MenuEvent;
+			import mx.events.FlexNativeMenuEvent;
+			import mx.collections.XMLListCollection;
+			import components.MethodRepeaterItem;
+			
+			
+			// Items to save
+			private var _runnable:Boolean;
+			private var _label:String;
+			private var _name:String;
+			private var _type:String;
+			private var _args:String;
+			private var _returnType:String;
+			private var _target:String;
+			private var _access:String;
+			private var _parameters:XMLList;
+			private var _arguments:Array;
+			
+			
+			// Icons
+			[Bindable] [Embed(source="icons/bullet_blue.png")] public var iconDefault:Class;
+			[Bindable] [Embed(source="icons/box.png")] public var iconRoot:Class; 
+			[Bindable] [Embed(source="icons/error.png")] public var iconWarning:Class; 
+			[Bindable] [Embed(source="icons/bullet_blue.png")] public var iconVariable:Class; 
+			[Bindable] [Embed(source="icons/bullet_key.png")] public var iconVariableReadonly:Class; 
+			[Bindable] [Embed(source="icons/bullet_key.png")] public var iconVariableWriteonly:Class; 
+			[Bindable] [Embed(source="icons/tag.png")] public var iconXMLNode:Class; 
+			[Bindable] [Embed(source="icons/tag.png")] public var iconXMLValue:Class; 
+			[Bindable] [Embed(source="icons/tag_blue.png")] public var iconXMLAttribute:Class; 
+			[Bindable] [Embed(source="icons/lightning.png")] public var iconFunction:Class;
+			[Bindable] [Embed(source="icons/bullet_wrench.png")] public var iconEdit:Class;
+			[Bindable] [Embed(source="icons/bullet_black.png")] public var iconLock:Class;
+			[Bindable] [Embed(source="icons/disk.png")] public var iconSave:Class;
+			
+			
+			// Bindables
+			[Bindable] private var xml:XMLListCollection = new XMLListCollection();
+			
+			
+			// The command
+			private const COMMAND_CALL_METHOD:String = "CALL_METHOD";
+			
+			
+			// Send function
+			private var _send:Function
+			private var _timestamp:String;
+			
+			
+			// Array to hold the checkbox state
+			private var checkboxes:Array;
+			
+			
+			/**
+			 * Set the data in the trace window
+			 * @param item: The object containing all the data
+			 * @param send: The reference to the send funtion
+			 */ 
+			public function setData(item:Object, send:Function):void
+			{
+				// Save the send function
+				_send = send;
+				
+				// Save the item
+				_runnable		= item.runnable;
+				_label			= item.label;
+				_name			= item.name;
+				_type			= item.type;
+				_args			= item.args;
+				_returnType		= item.returnType;
+				_target			= item.target;
+				_access			= item.access;
+				_parameters		= item.parameters;
+			}
+			
+			
+			/**
+			 * A value has been returned from a called function
+			 * @param timestamp: The timestamp /id
+			 * @param data: The return object
+			 */
+			public function checkReturnValue(timestamp:String, data:XML):void
+			{
+				// Check if the timestamps match
+				if (_timestamp == timestamp) {
+					xml.source = null;
+					xml.source = data.children();
+					tree.openItems = data.children();
+				}
+			}
+			
+			
+			/**
+			 * The application is ready
+			 */
+			private function creationComplete():void
+			{
+				// Set the info fields
+				fieldFunction.text = _name;
+				fieldParameters.text = _args;
+				fieldReturn.text = _returnType;
+								
+				// Create a dataprovider for the parameters
+				var dp:Array = new Array();
+				for (var i:int = 0; i < _parameters.length(); i++)
+				{
+					var type:String = _parameters[i].@type;
+					var optional:String = _parameters[i].@optional;
+					dp.push({type:type, optional:optional});
+				}
+				
+				// Show or hide the repeater
+				if (_parameters.length() == 0) {
+					parametersLabel.visible = true;
+					parametersRepeater.visible = false;
+					parametersRepeater.dataProvider = dp;
+				} else {
+					parametersLabel.visible = false;
+					parametersRepeater.visible = true;
+					parametersRepeater.dataProvider = dp;
+				}
+			}
+			
+			
+			/**
+			 * Run the function!
+			 */
+			private function runFunction():void
+			{
+				// Save the timestamp
+				// This will be the ID of the function call
+				_timestamp = String(new Date().time);
+				
+				// Save the arguments
+				_arguments = new Array();
+				if (methodRepeaterItem) {
+					for (var i:int = 0; i < methodRepeaterItem.length; i++) {
+						if (String(methodRepeaterItem[i].optional) == "true" && String(methodRepeaterItem[i].checkboxOptional.selected) == "false") {
+							break;
+						}
+						_arguments.push(methodRepeaterItem[i].newValue);	
+					}
+				}
+				
+				// Call the function
+				_send.apply(this, [{text:COMMAND_CALL_METHOD, target:_target, arguments:_arguments, returnType:_returnType, id:_timestamp}]);
+			}
+			
+						
+			/**
+			 * Save the checkbox state
+			 */
+			public function checkboxDownHander():void
+			{
+				checkboxes = new Array();
+				if (methodRepeaterItem) {
+					for (var i:int = 0; i < methodRepeaterItem.length; i++) {
+						checkboxes.push({
+							index:		i, 
+							optional:	String(methodRepeaterItem[i].optional), 
+							selected:	String(methodRepeaterItem[i].checkboxOptional.selected)
+						});
+					}
+				}
+			}
+			
+			
+			/**
+			 * Check the chages
+			 */
+			public function checkboxHander():void
+			{
+				// Counter for the loops
+				var i:int = 0;
+				
+				// Save the current state
+				var current:Array = new Array()
+				if (methodRepeaterItem) {
+					for (i = 0; i < methodRepeaterItem.length; i++) {
+						current.push({
+							index:		i, 
+							optional:	String(methodRepeaterItem[i].optional), 
+							selected:	String(methodRepeaterItem[i].checkboxOptional.selected)
+						});
+					}
+				}
+				
+				// Compare states, there are only two posibilities:
+				// Either a box has been check or unchecked at a certain position
+				var changed:Boolean = false;
+				var checked:Boolean = false
+				var index:int = 0;
+				for (i = 0; i < current.length; i++) {
+					if (current[i].optional == "true" && checkboxes[i].optional == "true") {
+						if (current[i].selected == "true" && checkboxes[i].selected == "false")
+						{
+							// A box has been checked
+							index = i;
+							changed = true;
+							checked = true;
+						}
+						if (current[i].selected == "false" && checkboxes[i].selected == "true")
+						{
+							// A box has been unchecked
+							index = i;
+							changed = true;
+							checked = false;
+						}
+					}
+				}
+				
+				// If a box is checked, update the boxes above to the checked state
+				if (changed && checked) {
+					for (i = index; i >= 0; i--) {
+						if (methodRepeaterItem[i].optional == "true") {
+							methodRepeaterItem[i].checkboxOptional.selected = checked;
+							methodRepeaterItem[i].input.enabled = checked;
+						}
+					}
+				}
+				
+				// If a box is unchecked, update the boxes below to the unchecked state
+				if (changed && !checked){
+					for (i = index; i < current.length; i++) {
+						if (methodRepeaterItem[i].optional == "true") {
+							methodRepeaterItem[i].checkboxOptional.selected = checked;
+							methodRepeaterItem[i].input.enabled = checked;
+						}
+					}
+				}
+			}
+			
+			
+		]]>	
+	</mx:Script>
+	
+	<mx:HBox width="100%" height="100%" horizontalGap="2" verticalGap="2">
+		<mx:Canvas width="380" height="100%">
+			<mx:Panel width="100%" height="100%"/>
+			<mx:Label text="METHOD" fontWeight="bold" x="10" y="8" fontSize="11"/>
+			<mx:Canvas left="4" top="31" right="4" bottom="4" horizontalScrollPolicy="off">
+				<mx:Label x="20" y="20" text="Function"/>
+				<mx:Label x="20" y="46" text="Parameters"/>
+				<mx:Label x="20" y="72" text="Return"/>
+				<mx:Label id="fieldFunction" x="120" y="20" text="" fontWeight="bold"/>
+				<mx:Label id="fieldParameters" x="120" y="46" text="" fontWeight="bold"/>
+				<mx:Label id="fieldReturn" x="120" y="72" text="" fontWeight="bold"/>
+				<mx:VBox left="10" right="10" y="108" verticalGap="20">
+					<mx:VBox width="100%" backgroundAlpha="1" backgroundColor="#D6D6D6" paddingTop="10" paddingBottom="10">
+						<mx:Canvas width="100%">
+							<mx:Repeater id="parametersRepeater">
+								<components:MethodRepeaterItem id="methodRepeaterItem" x="10" y="{parametersRepeater.currentIndex * 30}" data="{parametersRepeater.currentItem}" />
+							</mx:Repeater>
+							<mx:Label id="parametersLabel" x="10" text="No parameters needed"/>
+						</mx:Canvas>
+					</mx:VBox>
+					<mx:VBox width="100%" backgroundAlpha="1" backgroundColor="#D6D6D6" paddingTop="10" paddingBottom="10" paddingLeft="10">
+						<mx:Button label="RUN" click="runFunction()" width="70"/>
+					</mx:VBox>
+				</mx:VBox>
+			</mx:Canvas>
+		</mx:Canvas>
+		<mx:Canvas width="100%" height="100%" verticalScrollPolicy="off" horizontalScrollPolicy="off">
+			<mx:Panel width="100%" height="100%"/>
+			<mx:Label text="RETURN" fontWeight="bold" x="10" y="8" fontSize="11"/>
+			<mx:Tree id="tree" dataProvider="{xml}" iconField="@icon" labelField="@label" showRoot="false" borderColor="#000000" openDuration="0" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
+		</mx:Canvas>
+	</mx:HBox>
+
+</mx:Window>

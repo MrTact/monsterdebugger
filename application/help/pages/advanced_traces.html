@@ -1,0 +1,80 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title></title>
+		<link rel="stylesheet" href="../style.css" type="text/css" media="screen"/>
+	</head>
+	<body>
+		<h2>Advanced Traces</h2>
+		The trace function has a number of parameters that can help you as a developer to optimize your trace output. 
+		The full syntax of the trace function is: 
+		<br />
+		<br />
+			
+<div class="code">
+<pre>
+MonsterDebugger.trace(target, object, color, functions, depth);
+</pre>
+</div>
+<br />
+		<table border="0" cellspacing="0" cellpadding="0">
+			<tr>
+				<td width="100px"><strong>Argument<br/><br/></strong></td>
+				<td width="80px"><strong>Type<br/><br/></strong></td>
+				<td><strong>Description<br/><br/></strong></td>
+			</tr>
+			<tr>
+				<td valign="top">target</td>
+				<td valign="top">Object</td>
+				<td>The target from where the trace is called, this usually is the keyword "this".<br/><br/></td>
+			</tr>
+			<tr>
+				<td valign="top">object</td>
+				<td valign="top">*</td>
+				<td>The object to trace.<br/><br/></td>
+			</tr>
+			<tr>
+				<td valign="top">color</td>
+				<td valign="top">uint</td>
+				<td>
+					The color of the trace in the desktop application. 
+					For instance if you're working in a team, each person could have their own color. 
+					<br/><br/>
+				</td>
+			</tr>
+			<tr>
+				<td valign="top">functions</td>
+				<td valign="top">Boolean</td>
+				<td>Display the public methods of a Class in the output panel.<br/><br/></td>
+			</tr>
+			<tr>
+				<td valign="top">depth</td>
+				<td valign="top">int</td>
+				<td>
+					The depth of the trace. 
+					By default the trace will be 4 levels deep. 
+					If you want to trace a complex XML document, that has a structure deeper than 4 children, you should change this value. 
+					For unlimited depth set the value to -1. <strong>WARNING: This can seriously stall your app!</strong>
+					<br/><br/>
+				</td>
+			</tr>
+		</table>
+		<br />
+		<strong>Example of a more complex trace</strong><br />
+		<br />
+<div class="code">
+<pre>
+var loader:Loader = new Loader();
+MonsterDebugger.trace(this, loader, 0xFF0000, true, 6);
+</pre>
+</div>
+<br />
+		<img src="../images/trace_complex.jpg"/><br/>
+		The red colored trace in the interface.
+		<br/>
+		<br/>
+		<img src="../images/trace_loader.jpg"/><br/>
+		The expanded trace details with public methods.
+		<br/>
+	</body>
+</html>

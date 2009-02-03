@@ -1,0 +1,1759 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- 
+
+GRAWH!
+
+This is the source code for De MonsterDebugger. This AIR
+application listens to data that is transferred from Flash,
+AIR or FLEX applications that send debug information using
+the appropriate classes.
+
+This application will look at the data that is gathered and 
+will present it in a usable way. You can trace strings, 
+arrays, objects, XML and even custom classes to De
+MonsterDebugger. 
+
+Be aware that any traces made to De MonsterDebugger may 
+be viewed by others. De MonsterDebugger is intended to be 
+used to debug unpublished Flash, AIR of FLEX applications in
+the environment that they will be used in as a final product. 
+Please make sure that you do not send any debug material to
+the debugger from a live running application.  
+
+Use at your own risk.
+
+@author		Ferdi Koomen
+@company	De Monsters
+@link 		http://www.deMonsterDebugger.com
+@version 	2.0	
+	
+-->
+
+<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:fc="http://www.adobe.com/2006/fc" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" menu="{nativeMenu}" initialize="init()" creationComplete="creationComplete()">
+	
+	
+	<mx:Style source="skin/style.css"/>
+	
+	
+	<mx:Script>
+		<![CDATA[
+			
+			// Import classes
+			import com.adobe.utils.StringUtil;
+			import air.update.ApplicationUpdaterUI;
+			import air.update.events.UpdateEvent;
+			import mx.core.Window;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.controls.Alert;
+			import mx.events.DataGridEvent;
+			import mx.events.DataGridEventReason;
+			import mx.events.MenuEvent;
+			import mx.events.NumericStepperEvent;
+			import mx.events.TreeEvent;
+			import mx.events.FlexNativeMenuEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import flash.display.NativeWindowDisplayState;
+			import flash.events.AsyncErrorEvent;
+			import flash.events.Event;
+			import flash.events.ErrorEvent;
+			import flash.events.IOErrorEvent;
+			import flash.events.ProgressEvent;
+			import flash.events.SecurityErrorEvent;
+			import flash.events.NativeWindowDisplayStateEvent;
+			import flash.events.StatusEvent;
+			import flash.geom.Rectangle;
+			import flash.net.LocalConnection;
+			import flash.net.navigateToURL;
+			import flash.net.URLRequest;
+			import flash.net.Socket;
+			import flash.utils.ByteArray;
+			import components.PropertyEditor;
+			import components.AboutWindow;
+			import components.HelpWindow;
+			import components.TraceWindow;
+			import components.MessageWindow;
+			import components.MethodWindow;
+			import deng.fzip.FZip;
+			import deng.fzip.FZipFile;
+			import deng.fzip.FZipEvent;
+			
+			
+			// Bindables
+			[Bindable] private var tracesAll:ArrayCollection = new ArrayCollection();
+			[Bindable] private var tracesFiltered:ArrayCollection = new ArrayCollection();
+			[Bindable] private var properties:ArrayCollection = new ArrayCollection();
+			[Bindable] private var functions:ArrayCollection = new ArrayCollection();
+			[Bindable] private var appAll:XMLListCollection = new XMLListCollection();
+			[Bindable] private var appFiltered:XMLListCollection = new XMLListCollection();
+			
+		    
+			// Icons
+			[Bindable] [Embed(source="icons/bullet_blue.png")] public var iconDefault:Class;
+			[Bindable] [Embed(source="icons/box.png")] public var iconRoot:Class; 
+			[Bindable] [Embed(source="icons/error.png")] public var iconWarning:Class; 
+			[Bindable] [Embed(source="icons/bullet_blue.png")] public var iconVariable:Class; 
+			[Bindable] [Embed(source="icons/bullet_key.png")] public var iconVariableReadonly:Class; 
+			[Bindable] [Embed(source="icons/bullet_key.png")] public var iconVariableWriteonly:Class; 
+			[Bindable] [Embed(source="icons/tag.png")] public var iconXMLNode:Class; 
+			[Bindable] [Embed(source="icons/tag.png")] public var iconXMLValue:Class; 
+			[Bindable] [Embed(source="icons/tag_blue.png")] public var iconXMLAttribute:Class; 
+			[Bindable] [Embed(source="icons/lightning.png")] public var iconFunction:Class;
+			[Bindable] [Embed(source="icons/bullet_wrench.png")] public var iconEdit:Class;
+			[Bindable] [Embed(source="icons/bullet_white.png")] public var iconLock:Class;
+			[Bindable] [Embed(source="icons/disk.png")] public var iconSave:Class;
+			
+			
+			// Connections
+			private var lineOut:LocalConnection;
+			private var lineIn:LocalConnection;
+			
+			
+			// Connection names
+			private const LINE_OUT					:String = "_debuggerBlue";
+			private const LINE_IN					:String = "_debuggerRed";
+			
+			
+			// Types
+			private const TYPE_ALL					:String = "*";
+			private const TYPE_ARRAY				:String = "Array";
+			private const TYPE_BOOLEAN				:String = "Boolean";
+			private const TYPE_NUMBER				:String = "Number";
+			private const TYPE_OBJECT				:String = "Object";
+			private const TYPE_STRING				:String = "String";
+			private const TYPE_INT					:String = "int";
+			private const TYPE_UINT					:String = "uint";
+			private const TYPE_XML					:String = "XML";
+			private const TYPE_XMLLIST				:String = "XMLList";
+			private const TYPE_XMLNODE				:String = "XMLNode";
+			private const TYPE_XMLVALUE				:String = "XMLValue";
+			private const TYPE_XMLATTRIBUTE			:String = "XMLAttribute";
+			private const TYPE_METHOD				:String = "MethodClosure";
+			private const TYPE_FUNCTION				:String = "Function";
+			private const TYPE_BYTEARRAY			:String = "ByteArray";	
+			private const TYPE_WARNING				:String = "Warning";		
+			
+			
+			// Access types
+			private const ACCESS_VARIABLE			:String = "variable";
+			private const ACCESS_CONSTANT			:String = "constant";
+			private const ACCESS_ACCESSOR			:String = "accessor";
+			private const ACCESS_METHOD				:String = "method";
+			
+			
+			// Permission types
+			private const PERMISSION_READWRITE		:String = "readwrite";
+			private const PERMISSION_READONLY		:String = "readonly";
+			private const PERMISSION_WRITEONLY		:String = "writeonly";
+			
+			
+			// Commands
+			private const COMMAND_HELLO				:String = "HELLO";
+			private const COMMAND_ROOT				:String = "ROOT";
+			private const COMMAND_TRACE				:String = "TRACE";
+			private const COMMAND_GET_OBJECT		:String = "GET_OBJECT";
+			private const COMMAND_GET_PROPERTIES	:String = "GET_PROPERTIES";
+			private const COMMAND_GET_FUNCTIONS		:String = "GET_FUNCTIONS";
+			private const COMMAND_SET_PROPERTY		:String = "SET_PROPERTY";
+			private const COMMAND_CALL_METHOD		:String = "CALL_METHOD";
+			private const COMMAND_SHOW_HIGHLIGHT	:String = "SHOW_HIGHLIGHT";
+			private const COMMAND_HIDE_HIGHLIGHT	:String = "HIDE_HIGHLIGHT";
+			private const COMMAND_NOTFOUND			:String = "NOTFOUND";
+			
+			
+			// Paths
+			private const PATH_UPDATE:String = "http://www.demonsterdebugger.com/updateMonsterDebugger.xml";
+			private const PATH_TICKER:String = "http://www.demonsterdebugger.com/tickerMonsterDebugger.xml";
+			
+			
+			// Current version
+			private const VERSION:String = "2.0";
+			
+			
+			// The current selected tree item target
+			private var selectedTarget:String = "";
+			
+			
+			// Open method windows
+			private var windows:Array = new Array();
+			
+			
+			// Auto updater framework
+			private var updater:ApplicationUpdaterUI;
+			
+			
+			// Local shared object with the preferences
+			private var so:SharedObject;
+			
+			
+			// Temp file for buffering incoming data
+			private var bufferPackage:ByteArray = new ByteArray();
+			
+	        
+			// Zip file
+			private var zip:FZip;
+			private var zipIndex:Number;
+			private var zipExpandPath:String;
+			
+			
+			// Toggle states
+			private var showApp:Boolean = true;
+			private var showTraces:Boolean = true;
+			private var uiAppHeight:Number = 66.66;
+			private var uiTracesHeight:Number = 33.33;
+			private var uiInspectorWidth:Number = 350;
+			private var uiLoaded:Boolean = false;
+			private var dontShowProperties:Boolean = false;
+			
+			
+			// Bottom offset
+			private var bottomOffset:int = 29;
+			
+			
+			// Default ticker data
+			private var tickerMessage:String = "De MonsterDebugger is made specially for you by Design Studio De Monsters";
+			private var tickerURL:String = "http://www.demonsters.com";
+			
+			
+			/**
+			 * The app is loading
+			 */
+			private function init():void
+			{
+				// Get the preferences
+				so = SharedObject.getLocal("settings");
+				
+				// Check if there is any data saved
+				if (so.data.saved == true && so.data.version == VERSION)
+				{
+					// Bug with minimize and close:
+					// If you minimize the debugger and close it
+					// The window X and Y values are -32000
+					if (so.data.windowX < 0) {
+						so.data.windowX = 0;
+					}
+					if (so.data.windowY < 0) {
+						so.data.windowY = 0;
+					}
+					
+					// Load the saved data
+					nativeWindow.x = so.data.windowX;
+					nativeWindow.y = so.data.windowY;
+					nativeWindow.width = so.data.windowWidth;
+					nativeWindow.height = so.data.windowHeight;
+					showApp = so.data.uiShowApp;
+					showTraces = so.data.uiShowTraces;
+					uiAppHeight = so.data.uiAppHeight;
+					uiTracesHeight = so.data.uiTracesHeight;
+					uiInspectorWidth = so.data.uiInspectorWidth;
+					dontShowProperties = so.data.dontShowProperties;
+					tickerMessage = so.data.tickerMessage;
+					tickerURL = so.data.tickerURL;
+				}
+				else
+				{
+					// Reset the data and save the default values
+					so.data.version = VERSION;
+					so.data.uiShowApp = showApp;
+					so.data.uiShowTraces = showTraces;
+					so.data.uiAppHeight = uiAppHeight;
+					so.data.uiTracesHeight = uiTracesHeight;
+					so.data.uiInspectorWidth = uiInspectorWidth;
+					so.data.dontShowProperties = dontShowProperties;
+					so.data.windowX = nativeWindow.x;
+					so.data.windowY = nativeWindow.y;
+					so.data.windowWidth = nativeWindow.width;
+					so.data.windowHeight = nativeWindow.height;
+					so.data.windowMaximized = false;
+					so.data.tickerMessage = tickerMessage;
+					so.data.tickerURL = tickerURL;
+					so.data.saved = true;
+				}
+				
+				// Setup exiting event listeners so we can save the preferences on exit
+				nativeWindow.addEventListener(Event.CLOSING, closingApplication);
+			}
+			
+			
+			/**
+			 * The app is done loading
+			 */
+			private function creationComplete():void
+			{
+				// Check if the window should be in fullscreen
+				// Only PC's support the windowMaximized property
+				if (NativeWindow.supportsMenu) {
+					if (so.data.windowMaximized == true) {
+						nativeWindow.maximize();
+					} else {
+						nativeWindow.maximize();
+						nativeWindow.restore();
+					}
+				}
+				
+				// Update the inteface
+				updateInterface();
+				
+				// Add event listeners to the window
+				nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGE, updateInterface);
+				
+				// Set the inspector width
+				inspectorCanvas.width = uiInspectorWidth;
+					
+				// Show the window
+				nativeWindow.activate();
+				
+				// Init the updater
+				updater = new ApplicationUpdaterUI();
+				checkForUpdate();
+				
+				// Load the ticker
+				tickerData.send();
+				
+				// Setup line out
+				lineOut = new LocalConnection();
+				lineOut.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncErrorHandler);
+				lineOut.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				lineOut.addEventListener(StatusEvent.STATUS, statusHandler);
+				
+				// Setup line in
+				lineIn = new LocalConnection();
+				lineIn.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncErrorHandler);
+				lineIn.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
+				lineIn.addEventListener(StatusEvent.STATUS, statusHandler);
+				lineIn.allowDomain("*");
+				lineIn.client = this;
+			
+				try {				
+					lineIn.connect(LINE_IN);
+				} catch(error:ArgumentError) {
+					errorCanvas.visible = true;
+				}
+				
+				// Send the first message
+				send({text:COMMAND_HELLO});
+			}
+			
+			
+			/**
+			 * This function is called from the application
+			 * @param data: A compressed package
+			 */
+			public function onReceivedData(data:Object):void
+			{
+				// Check if we receibed the first package
+				if (data.nr == 1)
+				{
+					// Yes, so clear the temp file
+					bufferPackage = new ByteArray();
+					bufferPackage.bytesAvailable
+					bufferPackage.writeBytes(data.bytes, 0, data.bytes.bytesAvailable);
+				} 
+				else 
+				{					
+					// No, we're already busy with a package
+					// Just write the bytes in that package	
+					bufferPackage.writeBytes(data.bytes, 0, data.bytes.bytesAvailable);
+				}
+				
+				// Check if this is the last chunk of the package
+				// If so, then run the command from the package
+				if (data.nr == data.total) {
+					excecuteCommand(bufferPackage);
+				}
+			}
+			
+			
+			/**
+			 * The actual send function
+			 * @param data: The uncompressed data to send
+			 */
+			private function send(data:Object):void
+			{
+				if (enabled)
+				{
+					// Compress the data
+					var item:ByteArray = new ByteArray();
+					item.writeObject(data);
+					item.compress();
+					
+					// send the data through the line out
+					try {
+						lineOut.send(LINE_OUT, "onReceivedData", item);
+					} catch (error:Error) {
+						// Do nothing
+					}
+				}
+			}
+			
+			
+			/**
+			 * The data is received and ready to display
+			 * @param data: A compressed object
+			 */			
+			private function excecuteCommand(data:ByteArray):void
+			{
+				if (enabled)
+				{
+					// Uncompress the item data
+					data.uncompress();
+					
+					// Read the command from the data
+					var command:Object = data.readObject();
+					
+					// Variables
+					var i:int = 0;
+					var n:int = 0;
+					var icon:Class;
+					var type:String;
+					var permission:String;
+					var edit:Boolean;
+					var runnable:Boolean;
+					var parameters:XMLList;
+					
+					// Do the actions
+					switch(command.text)
+					{
+						
+						// Received hi!
+						case COMMAND_HELLO:
+		       				target = null;
+		       				appAll.source = null;
+		       				appFiltered.source = null;
+		       				properties.removeAll();
+		       				functions.removeAll();
+							send({text:COMMAND_ROOT, functions:false});
+						break;
+						
+						
+						// Received the base of the app
+						case COMMAND_ROOT:
+		       				target = null;
+		       				appAll.source = command.xml.children(); 
+		       				appFiltered.source = command.xml.children();
+		       				tree.openItems = command.xml.children();
+		       				filterApplication();
+		       				properties.removeAll();
+		       				functions.removeAll();
+						break;
+						
+						
+						//Received object data
+						case COMMAND_GET_OBJECT:
+						
+							// Get all targets in the current xml
+							var targets:XMLList = appAll.source..@target;
+							
+							// Loop through the targets
+							for (i = 0; i < targets.length(); i++)
+							{	
+								// If they match then update the xml
+								if (targets[i] == command.xml.node.@target) {
+									targets[i].parent().setChildren(command.xml.node.children());						
+									break;
+								}
+							}
+							
+							// Filter the tree
+							filterApplication();
+							
+						break;
+						
+						
+						//Received properties  data
+						case COMMAND_GET_PROPERTIES:
+							
+							// Save the properties
+							var prop:XMLList = command.xml.node.children();
+							
+							// Clear the array
+							properties.removeAll();
+							
+							// Loop through the properties
+							for (i = 0; i < prop.length(); i++)
+							{
+								// Default values
+								icon = iconLock;
+								type = prop[i].@type;
+								permission = prop[i].@permission;
+								edit = false;
+								
+								// Check if we can edit the variable
+								if (type == TYPE_STRING || type == TYPE_BOOLEAN || type == TYPE_NUMBER || type == TYPE_INT || type == TYPE_UINT) {
+									if (permission == PERMISSION_READWRITE) {
+										icon = iconEdit;
+										edit = true;
+									}
+								}
+								
+								// Save the property
+								properties.addItem({
+									icon:			icon,
+									edit:			edit,
+									label:			prop[i].@label,
+									name:			prop[i].@name,
+									type:			prop[i].@type,
+									value:			prop[i].@value,
+									target:			prop[i].@target,
+									access:			prop[i].@access,
+									permission:		prop[i].@permission
+								});
+							}
+						break;
+						
+						
+						//Received functions data
+						case COMMAND_GET_FUNCTIONS:
+							
+							// Save the properties
+							var func:XMLList = command.xml.node.children();
+							
+							// Clear the array
+							functions.removeAll();
+							
+							// Loop through the properties
+							for (i = 0; i < func.length(); i++)
+							{
+								// Default values
+								icon = iconFunction;
+								runnable = true;
+								
+								// Loop through the parameters
+								parameters = func[i]..parameter;
+								for (n = 0; n < parameters.length(); n++)
+								{
+									// Save the parameter info
+									var paramType:String = parameters[n].@type;
+									var paramOptional:String = parameters[n].@optional;
+									
+									// Check if we can supply the parameter type
+									if (paramOptional == "false") {
+										if (paramType != TYPE_STRING && paramType != TYPE_BOOLEAN && paramType != TYPE_NUMBER && paramType != TYPE_INT && paramType != TYPE_UINT) {
+											icon = iconLock;
+											runnable = false;
+										}
+									}
+								}
+								
+								// Save the property
+								functions.addItem({
+									icon:			icon,
+									runnable:		runnable,
+									label:			func[i].@label,
+									name:			func[i].@name,
+									type:			func[i].@type,
+									args:			func[i].@args,
+									returnType:		func[i].@returnType,
+									target:			func[i].@target,
+									access:			func[i].@access,
+									parameters:		func[i]..parameter
+								});
+							}
+						break;
+						
+						
+						// A reply to a function call has been given
+						case COMMAND_CALL_METHOD:
+							
+							// Loop through the method windows
+							for (i = 0; i < windows.length; i++) {
+								// We're checking a window title, this might be a bit tricky
+								if (windows[i] && windows[i].closed == false && windows[i].title == "De MonsterDebugger - Method") {
+									windows[i].checkReturnValue(command["id"], command["xml"]);
+								}
+							}
+							
+						break;
+						
+						
+						// Received a trace
+						case COMMAND_TRACE:
+						
+							// Format the time
+							var date:Date 			= command.date;
+							var hours:String 		= (date.getHours() < 10) ? "0" + date.getHours().toString() : date.getHours().toString();
+							var minutes:String 		= (date.getMinutes() < 10) ? "0" + date.getMinutes().toString() : date.getMinutes().toString();
+							var seconds:String 		= (date.getSeconds() < 10) ? "0" + date.getSeconds().toString() : date.getSeconds().toString();
+							var miliseconds:String  = date.getMilliseconds().toString();
+							var time:String 		= hours + ":" + minutes + ":" + seconds + "." + miliseconds;
+							
+							// Create the message
+							var message:String = "";
+							if (command.xml.children()[0].children().length() == 0) {
+								message = stripBreaks(htmlUnescape(command.xml.children()[0].@label));
+							} else {
+								message = stripBreaks(htmlUnescape(command.xml.children()[0].@label)) + " ...";
+							}
+							
+							// Save the item
+							var item:Object = {
+								line:		tracesAll.length + 1, 
+								time:		time, 
+								target:		command.target, 
+								color:		command.color,
+								message: 	message, 
+								xml: 		command.xml
+							};
+
+							// Add the item to the array
+							tracesAll.addItem(item);
+							
+							// Get the search terms from the input field
+							var text:String = tracesFilterField.text.toLowerCase();
+							var temp:Array = text.split("+");
+							var searchTerms:Array = new Array();
+							var searchString:String = "";
+							for (i = 0; i < temp.length; i++) {
+								searchString = StringUtil.trim(temp[i]).toLowerCase();
+								if (searchString != "") {
+									searchTerms.push(searchString);
+								}
+							}
+							
+							// Check if a filter term is given
+							if (searchTerms.join("") == "")
+							{
+								// No, so just add the item
+								tracesFiltered.addItem(item);
+							} 
+							else
+							{
+								// Compare strings!
+								var target:String = command.target.toLowerCase();
+								var add:Boolean = true;				
+								for (n = 0; n < searchTerms.length; n++) {
+									if (target.indexOf(searchTerms[n]) == -1 && message.indexOf(searchTerms[n]) == -1 ) {
+										add = false;
+									}
+								}
+								if (add) {
+									tracesFiltered.addItem(item);
+								}
+							}
+							
+						break;
+					}
+				}
+			}
+			
+			
+			/**
+			 * Clear the highlight
+			 */
+			private function clearHighlight():void
+			{
+				send({text:COMMAND_HIDE_HIGHLIGHT});
+			}
+			
+			
+			/**
+			 * Clear the traces datagrid
+			 */
+			private function clearTraces():void
+			{
+				tracesAll.removeAll();
+				tracesFiltered.removeAll();
+				tracesDatagrid.horizontalScrollPosition = 0;
+			}
+			
+			
+			/**
+			 * Update the filter on the taces
+			 */
+			private function filterTraces():void
+			{
+				// Clear the array
+				tracesFiltered.removeAll()
+				
+				// Var needed for the loop
+				var i:int = 0;
+				var n:int = 0;
+				var target:String = "";
+				var message:String = "";
+				var add:Boolean = true;
+				
+				// Get the search terms from the input field
+				var text:String = tracesFilterField.text.toLowerCase();
+				var temp:Array = text.split("+");
+				var searchTerms:Array = new Array();
+				var searchString:String = "";
+				for (i = 0; i < temp.length; i++) {
+					searchString = StringUtil.trim(temp[i]).toLowerCase();
+					if (searchString != "") {
+						searchTerms.push(searchString);
+					}
+				}
+							
+				// Check if a filter term is given
+				if (searchTerms.join("") == "")
+				{
+					// No, so just copy all
+					for (i = 0; i < tracesAll.length; i++) {
+						tracesFiltered.addItem(tracesAll[i]);
+					}
+				} 
+				else
+				{
+					// Compare strings
+					for (i = 0; i < tracesAll.length; i++)
+					{
+						// Get the data and lowercase it
+						target = tracesAll[i].target.toLowerCase();
+						message = tracesAll[i].message.toLowerCase();
+						add = true;
+						
+						// Loop through the search terms and compare strings
+						for (n = 0; n < searchTerms.length; n++) {
+							if (target.indexOf(searchTerms[n]) == -1 && message.indexOf(searchTerms[n]) == -1) {
+								add = false;
+							}
+						}
+						
+						// Add if needed
+						if (add) {
+							tracesFiltered.addItem(tracesAll[i]);
+						}
+					}
+				}
+			}
+			
+			
+			/**
+			 * Refresh the inspector
+			 */
+			private function refreshInspector():void
+			{
+   				properties.removeAll();
+   				functions.removeAll();
+   				if (selectedTarget != null) {
+   					send({text:COMMAND_GET_PROPERTIES, target:selectedTarget});
+					send({text:COMMAND_GET_FUNCTIONS, target:selectedTarget});
+   				}
+			}
+			
+			
+			/**
+			 * Reload the application tree
+			 */
+			private function refreshApplication():void
+			{
+				// Check if the tree is loaded
+				if (tree.openItems)
+				{
+					// Get the current open targets
+					var open:Array = tree.openItems as Array;
+					var targets:Array = new Array();
+					for (var i:int = 0; i < open.length; i++) {
+						targets.push(String(open[i].@target));
+					}
+					
+					// Sort the targets
+					targets = targets.sort();
+					
+					// Clear the data
+					selectedTarget = null;
+	   				properties.removeAll();
+	   				functions.removeAll();	
+	   				
+	   				// Update all objects	
+					for (var n:int = 0; n < targets.length; n++) {
+						send({text:COMMAND_GET_OBJECT, target:targets[n], functions:false});
+					}
+				}
+			}
+			
+			
+			/**
+			 * Update the filter on the application tree
+			 */
+			private function filterApplication():void
+			{
+				// Check if the app is loaded
+				if (appAll.length > 0)
+				{
+					// Vars needed for the loops
+					var data:XMLList = appAll.copy();
+					var targets:XMLList = data..@target;
+					var children:XMLList;
+					var openOld:Array;
+					var openNew:Array;
+					var i:int = 0;
+					var n:int = 0;
+					
+					// Get the search terms from the input field
+					var text:String = appFilterField.text.toLowerCase();
+					var temp:Array = text.split("+");
+					var searchTerms:Array = new Array();
+					var searchString:String = "";
+					for (i = 0; i < temp.length; i++) {
+						searchString = StringUtil.trim(temp[i]).toLowerCase();
+						if (searchString != "") {
+							searchTerms.push(searchString);
+						}
+					}
+					
+					// Save the scroll position
+					var vscroll:int = tree.verticalScrollPosition;
+					var hscroll:int = tree.verticalScrollPosition;
+					
+					// Filter the data
+					children = filterChildren(data.node, searchTerms);
+					data.setChildren(children);
+					
+					// Get the filtered targets
+					targets = data..@target;
+					
+					// Get the open items
+					openOld = tree.openItems as Array;
+					openNew = new Array();
+					for (i = 0; i < openOld.length; i++) {
+						for (n = 0; n < targets.length(); n++) {
+							if (targets[n] == openOld[i].@target) {
+								openNew.push(targets[n].parent());
+							}
+						}
+					}
+					
+					// Set the data
+					appFiltered.source = null;
+					appFiltered.source = data;
+					tree.openItems = openNew;
+						
+					// Set the scroll position
+					tree.verticalScrollPosition = vscroll;
+					tree.horizontalScrollPosition = hscroll;
+				}
+			}
+			
+			
+			/**
+			 * Recursive filter child nodes
+			 * @param children: The nodes to filter
+			 * @param searchTerms: The terms to filter on
+			 */
+			private function filterChildren(children:XMLList, searchTerms:Array):XMLList
+			{
+				// The return XML
+				var xml:XMLList = new XMLList();
+				
+				// Variables for the loops
+				var i:int = 0;
+				var n:int = 0;
+				var name:String = "";
+				var value:String = "";
+				var label:String = "";
+				var type:String = "";
+				var add:Boolean = true;
+				var temp:*;
+				
+				// Loop through the nodes
+				for (i = 0; i < children.length(); i++)
+				{
+					// Get the data
+					name = String(children[i].@name).toLowerCase();
+					value = String(children[i].@value).toLowerCase();
+					label = String(children[i].@label).toLowerCase();
+					type = String(children[i].@type).toLowerCase();
+					add = true;
+					
+					// Compare strings
+					if (searchTerms.join("") != "") {
+						for (n = 0; n < searchTerms.length; n++) {
+							if (children[i].children().length() == 0) {
+								if (name.indexOf(searchTerms[n]) == -1 && value.indexOf(searchTerms[n]) == -1 && label.indexOf(searchTerms[n]) == -1 && type.indexOf(searchTerms[n]) == -1) {
+									add = false;
+								}
+							}
+						}
+					}
+					
+					// Add the node if needed
+					if (add) {
+						if (children[i].children().length() > 0) {
+							// The node has children
+							temp = children[i];
+							temp.setChildren(filterChildren(temp.children(), searchTerms));
+							if (temp.children().length() == 0) {
+								// The node has just one property
+								temp.setChildren(XML("<node icon='iconWarning' type='Warning' label='No filter results' name='No filter results'/>"));
+							}
+							xml += temp;
+						} else {
+							// The node is just one value
+							if (!dontShowProperties) {
+								xml += children[i];
+							}
+						}
+					}
+				}
+				
+				// Return the xml
+				return xml;
+			}
+			
+			
+			/**
+			 * Show a trace in an output window
+			 * @param event: The selection event from the data grid
+			 */
+			private function showTraceWindow(event:Event):void
+			{
+				// Check if the selected item is still available
+				if (event.currentTarget.selectedItem != null)
+				{
+					// Get the data
+					var item:Object = tracesFiltered.getItemAt(event.currentTarget.selectedIndex);
+					
+					// Create the window
+					var traceWindow:TraceWindow = new TraceWindow();
+					traceWindow.setData(item);
+					traceWindow.open();
+					centerWindow(traceWindow);
+					windows.push(traceWindow);
+				}
+			}
+			
+			
+			/**
+			 * An item in the app tree has been clicked
+			 * @param event: Basic event
+			 */	
+			private function treeClick(event:Event):void
+			{
+				// Check if the target is still there
+				if (event.currentTarget.selectedItem != null)
+				{
+					// Save the type and target
+					var objType:String = event.currentTarget.selectedItem.@type;
+					var objTarget:String = event.currentTarget.selectedItem.@target;
+					
+					// Clear the dataproviders
+					properties.removeAll();
+					functions.removeAll();
+					selectedTarget = null;
+					
+					// Only get the info from objects
+					if (objType != TYPE_WARNING && objType != TYPE_STRING && objType != TYPE_BOOLEAN && objType != TYPE_NUMBER && objType != TYPE_INT && objType != TYPE_UINT && objType != TYPE_FUNCTION)
+					{
+						selectedTarget = objTarget;
+						send({text:COMMAND_GET_PROPERTIES, target:objTarget});
+						send({text:COMMAND_GET_FUNCTIONS, target:objTarget});
+					}
+					
+					// Hightlight the object on the client side if possible
+					send({text:COMMAND_SHOW_HIGHLIGHT, target:objTarget});
+				}
+			}
+			
+			
+			/**
+			 * An item in the tree is open
+			 * @param event: Basic event
+			 */	
+			private function treeOpen(event:TreeEvent):void
+			{
+				// Check if a new target is opened
+				if (event.item.@target != null)
+				{
+					// Send the command
+					send({text:COMMAND_GET_OBJECT, target:String(event.item.@target), functions:false});
+				}
+			}
+			
+			
+			/**
+			 * A numeric stepper has been clicked on the property editor
+			 * @param event: Basic event
+			 * @param type: Object type
+			 */	
+			public function propertiesUpdate(event:Event):void
+			{
+				// Save the vars
+				var newValue:Object = event.currentTarget.parent.parent.newValue;
+				var value:Object = event.currentTarget.parent.parent.data.value;
+				var name:String = event.currentTarget.parent.parent.data.name;
+				var type:String = event.currentTarget.parent.parent.data.type;
+				var edit:Boolean = event.currentTarget.parent.parent.data.edit;
+				var target:String = event.currentTarget.parent.parent.data.target;
+				
+				// Double check if we can send the edit command
+				if (type == TYPE_STRING || type == TYPE_BOOLEAN || type == TYPE_NUMBER || type == TYPE_INT || type == TYPE_UINT) {
+					if (edit == true && newValue != value)
+					{
+						// Send the command
+						send({text:COMMAND_SET_PROPERTY, target:target, name:name, value:newValue});
+						
+						// Set the value
+						event.currentTarget.parent.parent.data.value = newValue;
+					}
+				}
+			}
+			
+			
+			/**
+			 * A function has been double clicked
+			 * @param event: Basic event
+			 */	
+			private function functionsClick(event:MouseEvent):void
+			{
+				// Check if the selected item is still there
+				if (functionsGrid.selectedItem != null)
+				{
+					// Get the data
+					var item:Object = functionsGrid.selectedItem;
+					
+					// Check if we can run the function
+					if(item.runnable)
+					{
+						// Create the window
+						var methodWindow:MethodWindow = new MethodWindow();
+						methodWindow.id = "methodWindow"
+						methodWindow.setData(item, send);
+						methodWindow.open();
+						centerWindow(methodWindow);
+						windows.push(methodWindow);
+					}
+				}
+			}
+			
+			
+			/**
+			 * Check for an update
+			 */	
+			private function checkForUpdate():void
+			{
+				// The code below is a hack to work around a bug in the framework so that CMD-Q still works on Mac OSX
+				// This is a temporary fix until the framework is updated (3.02)
+				// See http://www.adobe.com/cfusion/webforums/forum/messageview.cfm?forumid=72&catid=670&threadid=1373568
+				NativeApplication.nativeApplication.addEventListener(Event.EXITING, 
+					function(event:Event):void {
+						var openedWindows:Array = NativeApplication.nativeApplication.openedWindows;
+						for (var i:int = 0; i < openedWindows.length; i++) {
+							openedWindows[i].close();
+						}
+				});
+				
+				// Configuration stuff
+				updater.updateURL = PATH_UPDATE; // Server-side XML file describing update
+				updater.isCheckForUpdateVisible = false; // We won't ask permission to check for an update
+				updater.addEventListener(UpdateEvent.INITIALIZED, onUpdate); // Once initialized, run onUpdate
+				updater.addEventListener(ErrorEvent.ERROR, errorHandler); // If something goes wrong, run onError
+				updater.initialize(); // Initialize the update framework
+			}
+			
+			
+			/**
+			 * Check for an update
+			 * @event: Update event from the framework
+			 */ 
+			private function onUpdate(event:UpdateEvent):void
+			{
+				updater.checkNow(); 
+			}
+			
+			
+			/**
+			 * Mouse over the advertisement bar
+			 */ 
+			private function advertisementRollOver():void
+			{
+				advertisement.setStyle("backgroundColor", "#EEEEEE");
+				advertisementLabel.setStyle("color", "#111111");
+			}
+			
+			
+			/**
+			 * Mouse out the advertisement bar
+			 */ 
+			private function advertisementRollOut():void
+			{
+				advertisement.setStyle("backgroundColor", "#666666");
+				advertisementLabel.setStyle("color", "#CCCCCC");
+			}
+			
+			
+			/**
+			 * Load the clicked link
+			 * @param event: Basic event
+			 */ 
+			private function advertisementClick(event:Event):void
+			{
+				// Check if the advertisement or close button has been clicked
+				if (event.target == advertisement) {
+					if (tickerURL != "") {
+						navigateToURL(new URLRequest(tickerURL));
+					}
+				}
+			}
+			
+			
+			/**
+			 * Hide the advertisement
+			 * @param event: Basic event
+			 */ 
+			private function advertisementClose(event:Event):void
+			{
+				// Remove the ad
+				advertisement.parent.removeChild(advertisement);
+				bottomOffset = 0;
+			}
+			
+			
+			/**
+			 * The application is exiting, so save the window preferences
+			 * @param event: Closing event
+			 */ 
+			private function closingApplication(event:Event = null):void
+			{
+				// Save the window preferences
+				if (nativeWindow) {
+					// Dont save the maximized property on a Mac
+					// Dont save the width and height if the window is minimized
+					// We could save these values on a resize event...
+					if (nativeWindow.displayState == NativeWindowDisplayState.MAXIMIZED && NativeWindow.supportsMenu) {
+						so.data.windowMaximized = true;
+					} else if (nativeWindow.displayState == NativeWindowDisplayState.NORMAL) {
+						so.data.windowMaximized = false;
+						so.data.windowX = nativeWindow.x;
+						so.data.windowY = nativeWindow.y;
+						so.data.windowWidth = nativeWindow.width;
+						so.data.windowHeight = nativeWindow.height;
+					}
+					so.data.uiShowApp = showApp;
+					so.data.uiShowTraces = showTraces;
+					so.data.uiAppHeight = uiAppHeight;
+					so.data.uiTracesHeight = uiTracesHeight;
+					so.data.uiInspectorWidth = uiInspectorWidth;
+					so.data.dontShowProperties = dontShowProperties;
+					so.data.saved = true;
+				}
+			}
+			
+			
+			/**
+			 * Start expanding the zip file
+			 * @param type: "client" or "example" or "templates"
+			 */
+			private function zipFileExpand(type:String):void
+			{			
+				// Set the index
+				zipIndex = 0;
+				
+				// Load zip
+				zip = new FZip();
+				zip.addEventListener(FZipEvent.FILE_LOADED, zipFileLoaded);
+				zip.addEventListener(Event.COMPLETE, zipFileComplete);
+				if (type == "client") {
+					zip.load(new URLRequest("export/client.zip"));
+				}
+				if (type == "example") {
+					zip.load(new URLRequest("export/example.zip"));
+				}
+				if (type == "templates") {
+					zip.load(new URLRequest("export/templates.zip"));
+				}
+			}
+			
+			
+			/**
+			 * The zip file is open
+			 * @param event: Basic event
+			 */
+			private function zipFileLoaded(event:Event):void
+			{
+				// Get the zip file
+				var zipFile:FZipFile = zip.getFileAt(zipIndex);
+				
+				// Save the path
+				var path:String = zipFile.filename;
+				
+				// Check if the path is a file or a directory
+				if (zipFile.content.length > 0)
+				{
+					// The path is a file
+					var file:File = new File(zipExpandPath + "/" + path);
+					
+					// Create a stream and write the file
+					var stream:FileStream = new FileStream();
+					stream.open(file, FileMode.WRITE);
+					stream.writeBytes(zipFile.content);
+					stream.close();
+				}
+				else
+				{
+					// The path is a directory
+					var dir:File = new File(zipExpandPath + "/" + path);
+					dir.createDirectory();
+				}
+			
+				// Up the index
+				zipIndex++;
+			}
+			
+			
+			/**
+			 * The zip file is done reading
+			 * @param event: Basic event
+			 */
+			private function zipFileComplete(event:Event):void
+			{
+				// Show an alert here
+				var messageWindow:MessageWindow = new MessageWindow();
+				messageWindow.open();
+				centerWindow(messageWindow);
+			}
+			
+			
+			/**
+			 * Set the position of a window to match the app window
+			 * @param window: The window to centre
+			 */
+			private function centerWindow(window:Window):void
+			{
+				window.nativeWindow.x = nativeWindow.x + ((nativeWindow.width - window.nativeWindow.width) / 2);
+				window.nativeWindow.y = nativeWindow.y + ((nativeWindow.height - window.nativeWindow.height) / 2);
+			}
+			
+			
+			/**
+			 * Return an array containing the key code of the standard
+			 * modifier key for either Mac or Windows
+			 * @param iten: The menu item to modify
+			 */ 
+			private function standardOSModifier(item:Object):Array
+			{
+				var modifiers:Array = new Array();
+				if ((Capabilities.os.indexOf("Windows") >= 0)) {
+					modifiers.push(Keyboard.CONTROL);
+				} else if (Capabilities.os.indexOf("Mac OS") >= 0) {
+					modifiers.push(Keyboard.COMMAND);
+				}
+				return modifiers;
+			}
+			
+			
+			/**
+			 * Handle menu commands
+			 * @parem event: Basic menu event
+			 */ 
+			private function nativeMenuCommand(event:FlexNativeMenuEvent):void
+			{
+				var command:String = event.item.@command;
+				switch(command)
+				{
+					case "exit":
+					closingApplication();
+					nativeApplication.exit();
+					break;
+					
+					case "example":
+					var exampleFile:File = File.desktopDirectory;
+					exampleFile.browseForDirectory("Select a directory");
+					exampleFile.addEventListener(Event.SELECT, function(event:Event):void {
+						zipExpandPath = exampleFile.nativePath;
+						zipFileExpand("example");
+					});
+					break;
+					
+					case "client":
+					var clientFile:File = File.desktopDirectory;
+					clientFile.browseForDirectory("Select a directory");
+					clientFile.addEventListener(Event.SELECT, function(event:Event):void {
+						zipExpandPath = clientFile.nativePath;
+						zipFileExpand("client");
+					});
+					break;
+					
+					case "templates":
+					var templatesFile:File = File.desktopDirectory;
+					templatesFile.browseForDirectory("Select a directory");
+					templatesFile.addEventListener(Event.SELECT, function(event:Event):void {
+						zipExpandPath = templatesFile.nativePath;
+						zipFileExpand("templates");
+					});
+					break;
+					
+					case "help":
+					var helpWindow:HelpWindow = new HelpWindow();
+					helpWindow.open();
+					centerWindow(helpWindow);
+					break;
+					
+					case "about":
+					var aboutWindow:AboutWindow = new AboutWindow();
+					aboutWindow.open();
+					centerWindow(aboutWindow);
+					break;
+					
+					case "website":
+					navigateToURL(new URLRequest("http://www.demonsterdebugger.com"));
+					break
+					
+					case "as3reference":
+					navigateToURL(new URLRequest("http://help.adobe.com/en_US/AS3LCR/Flash_10.0/index.html"));
+					break;
+					
+					case "as3errors":
+					navigateToURL(new URLRequest("http://help.adobe.com/en_US/AS3LCR/Flash_10.0/runtimeErrors.html"));
+					break;
+					
+					case "as3iphone":
+					navigateToURL(new URLRequest("http://www.mikechambers.com/as3iphone/"));
+					break;
+					
+					case "as3migration":
+					navigateToURL(new URLRequest("http://livedocs.adobe.com/flash/9.0/ActionScriptLangRefV3/migration.html"));
+					break;
+					
+					case "as3ria":
+					navigateToURL(new URLRequest("http://www.adobe.com/devnet/actionscript/articles/atp_ria_guide/atp_ria_guide.pdf"));
+					break;
+					
+					case "as3player":
+					navigateToURL(new URLRequest("http://www.adobe.com/support/flashplayer/downloads.html#fp10"));
+					break;
+					
+					case "focusFilterApp":
+					appFilterField.setFocus();
+					break;
+					
+					case "focusFilterTraces":
+					tracesFilterField.setFocus();
+					break;
+					
+					case "showProperties":
+					applicationMenu.menu[1].menuitem[3].@toggled = true;
+					applicationMenu.menu[1].menuitem[4].@toggled = false;
+					viewstack.selectedChild = propertiesCanvas;
+					break;
+					
+					case "showMethods":
+					applicationMenu.menu[1].menuitem[3].@toggled = false;
+					applicationMenu.menu[1].menuitem[4].@toggled = true;
+					viewstack.selectedChild = functionsCanvas;
+					break;
+					
+					case "dontShowProperties":
+					dontShowProperties = !dontShowProperties;
+					applicationMenu.menu[1].menuitem[6].@toggled = dontShowProperties;
+					filterApplication();
+					break;
+					
+					case "refreshInspector":
+					refreshInspector();
+					break;
+					
+					case "refreshApplication":
+					refreshApplication();
+					break;
+					
+					case "clearHighlight":
+					clearHighlight();
+					break;
+					
+					case "clearTraces":
+					clearTraces();
+					break;
+					
+					case "showApp":
+					showApp = true;
+					showTraces = false;
+					updateInterface();
+					break;
+					
+					case "showTraces":
+					showApp = false;
+					showTraces = true;
+					updateInterface();
+					break;
+					
+					case "showBoth":
+					showApp = true;
+					showTraces = true;
+					updateInterface();
+					break;
+				}	
+			}
+			
+			
+			/**
+			 * Save the panel sizes (relative)
+			 */
+			private function saveCanvasSize():void
+			{
+				if (uiLoaded && showTraces && showApp && tracesCanvas.visible && appCanvas.visible){
+					var total:Number = appCanvas.height + tracesCanvas.height;
+					uiAppHeight = 100 / (total / appCanvas.height);
+					uiTracesHeight = 100 / (total / tracesCanvas.height);
+				}
+			}
+			
+			
+			/**
+			 * Resize the interface panels
+			 * @param event: Optional window resize event
+			 */
+			private function updateInterface(event:NativeWindowDisplayStateEvent = null):void
+			{
+				// Save the effective UI height
+				var uiHeight:Number = height - bottomOffset - 2;
+				
+				// Enable / disable the menus
+				applicationMenu.menu[1].menuitem[0].@enabled = true;
+				applicationMenu.menu[1].menuitem[1].@enabled = true;
+				applicationMenu.menu[1].menuitem[3].@enabled = true;
+				applicationMenu.menu[1].menuitem[4].@enabled = true;
+				applicationMenu.menu[1].menuitem[6].@enabled = true;
+				applicationMenu.menu[1].menuitem[8].@enabled = true;
+				applicationMenu.menu[1].menuitem[9].@enabled = true;
+				applicationMenu.menu[1].menuitem[11].@enabled = true;
+				applicationMenu.menu[1].menuitem[12].@enabled = true;
+					
+				// Show both
+				if (showTraces && showApp)
+				{
+					// Max the application canvas
+					appCanvas.visible = true;
+					appCanvas.minHeight = 150;
+					appCanvas.maxHeight = 10000;
+					appCanvas.height = Math.round((uiHeight / 100) * uiAppHeight);
+					
+					// Max the tree canvas
+					tracesCanvas.visible = true;
+					tracesCanvas.minHeight = 80;
+					tracesCanvas.maxHeight = 10000;
+					tracesCanvas.height = Math.round((uiHeight / 100) * uiTracesHeight);
+					
+					// Set the menus
+					applicationMenu.menu[2].menuitem[0].@toggled = false;
+					applicationMenu.menu[2].menuitem[1].@toggled = false;
+					applicationMenu.menu[2].menuitem[2].@toggled = true;
+				}
+				
+				// Show application only
+				if (!showTraces && showApp)
+				{
+					// Max the application canvas
+					appCanvas.visible = true;
+					appCanvas.minHeight = 0;
+					appCanvas.maxHeight = 10000;
+					appCanvas.height = height - bottomOffset;
+					
+					// Hide the trace canvas
+					tracesCanvas.visible = false;
+					tracesCanvas.minHeight = -2;
+					tracesCanvas.maxHeight = -2;
+					tracesCanvas.height = -2;
+					
+					// Set the menus
+					applicationMenu.menu[2].menuitem[0].@toggled = true;
+					applicationMenu.menu[2].menuitem[1].@toggled = false;
+					applicationMenu.menu[2].menuitem[2].@toggled = false;
+				
+					// Enable / disable the menus
+					applicationMenu.menu[1].menuitem[1].@enabled = false;
+					applicationMenu.menu[1].menuitem[12].@enabled = false;	
+				}
+				
+				// Show traces only
+				if (showTraces && !showApp)
+				{
+					// Max the trace canvas
+					tracesCanvas.visible = true;
+					tracesCanvas.minHeight = 0;
+					tracesCanvas.maxHeight = 10000;
+					tracesCanvas.height = height - bottomOffset;
+					
+					// Hide the application canvas
+					appCanvas.visible = false;
+					appCanvas.minHeight = -2;
+					appCanvas.maxHeight = -2;
+					appCanvas.height = -2;
+					
+					// Set the menus
+					applicationMenu.menu[2].menuitem[0].@toggled = false;
+					applicationMenu.menu[2].menuitem[1].@toggled = true;
+					applicationMenu.menu[2].menuitem[2].@toggled = false;
+				
+					// Enable / disable the menus
+					applicationMenu.menu[1].menuitem[0].@enabled = false;
+					applicationMenu.menu[1].menuitem[3].@enabled = false;
+					applicationMenu.menu[1].menuitem[4].@enabled = false;
+					applicationMenu.menu[1].menuitem[6].@enabled = false;
+					applicationMenu.menu[1].menuitem[8].@enabled = false;
+					applicationMenu.menu[1].menuitem[9].@enabled = false;
+				}
+				
+				// Set the menu options
+				applicationMenu.menu[1].menuitem[6].@toggled = dontShowProperties;
+				
+				// Set the loaded flag
+				uiLoaded = true;
+			}
+			
+			
+			/**
+			 * The ticker data has been received
+			 * @param event: Result event from the XML loader
+			 */
+			private function tickerDataHandler(event:ResultEvent):void
+			{
+				// Save the data
+				var data:XML = event.result as XML;
+				tickerMessage = data.message;
+				tickerURL = data.url;
+				
+				// Set the label
+				advertisementLabel.text = tickerMessage;
+				
+				// Save the message
+				so.data.tickerMessage = tickerMessage;
+				so.data.tickerURL = tickerURL;
+			}
+			
+			
+			/**
+			 * The ticker data can't be loaded
+			 * Probably no internet connection
+			 * @param event: Error from the XML loader
+			 */
+			private function tickerErrorHandler(event:FaultEvent):void
+			{
+				// Get the saved data
+				tickerMessage = so.data.tickerMessage;
+				tickerURL = so.data.tickerURL;
+				
+				// Set the label
+				advertisementLabel.text = tickerMessage;
+			}
+			
+			
+			/**
+			 * Strip the breaks from a string
+			 * @param s: The string to strip
+			 */
+			private function stripBreaks(s:String):String
+			{
+				s = s.replace("\n", " ");
+				s = s.replace("\r", " ");
+				s = s.replace("\t", " ");
+				return s;
+			}
+			
+			
+			/**
+			 * Converts regular characters to HTML characters
+			 * @param s: The string to convert
+			 */
+			public function htmlEscape(s:String):String
+			{
+				if (s) {
+			  		return XML(new XMLNode(XMLNodeType.TEXT_NODE, s)).toXMLString();
+				} else {
+					return "";
+				}
+			}
+				
+			
+			/**
+			 * Converts HTML characters to regular characters
+			 * @param s: The string to convert
+			 */
+			public function htmlUnescape(s:String):String
+			{
+				if (s) {
+			    	return new XMLDocument(s).firstChild.nodeValue;
+				} else {
+					return "";
+				}
+			}
+
+				
+			/**
+			 * Event handlers
+			 * These can be used for debugging De MonsterDebugger
+			 */
+			private function closeHandler(event:Event):void {}
+			private function connectHandler(event:Event):void {}
+			private function errorHandler(event:ErrorEvent):void {}
+			private function ioErrorHandler(event:IOErrorEvent):void {}
+			private function socketDataHandler(event:ProgressEvent):void {}
+			private function asyncErrorHandler(event:AsyncErrorEvent):void {}
+			private function securityErrorHandler(event:SecurityErrorEvent):void {}
+			private function statusHandler(event:StatusEvent):void {}
+			
+		]]>	
+	</mx:Script>
+	
+	
+	<mx:HTTPService id="tickerData" url="{PATH_TICKER}" resultFormat="e4x" result="tickerDataHandler(event)" fault="tickerErrorHandler(event)"/>
+    
+    
+	<mx:XML id="applicationMenu" format="e4x">
+		<menubar>
+			<menu label="File" mnemonic="0">
+				<menuitem label="Export Client Class" command="client" mnemonic="7"/>
+				<menuitem label="Export Example" command="example" mnemonic="7"/>
+				<menuitem label="Export FDT Templates" command="templates" mnemonic="7"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="Exit" command="exit" key="q" mnemonic="1"/>
+			</menu>
+			<menu label="View" mnemonic="0">
+				<menuitem label="Focus on Live Application Filter" command="focusFilterApp" key="f" mnemonic="9"/>
+				<menuitem label="Focus on Traces Filter" command="focusFilterTraces" key="F" mnemonic="9"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="Show Properties" type="check" toggled="true" command="showProperties" key="p" mnemonic="5"/>
+				<menuitem label="Show Methods" type="check" toggled="false" command="showMethods" key="m" mnemonic="5"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="Don't Show Single Properties" type="check" toggled="false" command="dontShowProperties" key="o" mnemonic="0"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="Refresh Inspector" command="refreshInspector" key="r" mnemonic="9"/>
+				<menuitem label="Refresh Live Application" command="refreshApplication" key="R" mnemonic="9"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="Clear Highlight" command="clearHighlight" key="h" mnemonic="6"/>
+				<menuitem label="Clear Traces" command="clearTraces" key="x" mnemonic="0"/>
+			</menu>
+			<menu label="Window" mnemonic="0">
+				<menuitem label="Show Live Application" type="check" toggled="false" command="showApp" key="3" mnemonic="5"/>
+				<menuitem label="Show Traces" type="check" toggled="false" command="showTraces" key="2" mnemonic="5"/>
+				<menuitem label="Show Both" type="check" toggled="true" command="showBoth" key="1" mnemonic="5"/>
+			</menu>
+			<menu label="Help" mnemonic="0">
+				<menuitem label="Help" command="help" mnemonic="0"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="ActionScript 3.0 Reference" command="as3reference" mnemonic="17"/>
+				<menuitem label="ActionScript 3.0 Runtime Errors" command="as3errors" mnemonic="25"/>
+				<menuitem label="ActionScript 3.0 Reference for iPhone" command="as3iphone" mnemonic="31"/>
+				<menuitem label="ActionScript 2.0 Migration" command="as3migration" mnemonic="17"/>
+				<menuitem label="Adobe Flash RIA Guide (PDF)" command="as3ria" mnemonic="6"/>
+				<menuitem label="Adobe Flash Players" command="as3player" mnemonic="18"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="About" command="about" mnemonic="0"/>
+				<menuitem label="Product Website" command="website" mnemonic="8"/>				
+			</menu>
+		</menubar>
+	</mx:XML>
+	
+	
+	<mx:FlexNativeMenu id="nativeMenu" dataProvider="{applicationMenu}" labelField="@label" keyEquivalentField="@key" mnemonicIndexField="@mnemonic" keyEquivalentModifiersFunction="standardOSModifier" showRoot="false" itemClick="nativeMenuCommand(event)"/>
+	
+	
+	<mx:VBox x="0" y="1" width="100%" height="100%" horizontalGap="2" verticalGap="2">
+		<mx:VDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true">
+			<mx:Canvas id="appCanvas" width="100%" height="100%" minHeight="150" resize="saveCanvasSize()">
+				<mx:HDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true">
+					<mx:Canvas width="100%" height="100%" minWidth="400">
+						<mx:Panel width="100%" height="100%"/>
+						<mx:Label text="LIVE APPLICATION" fontWeight="bold" x="10" y="8" fontSize="11"/>
+						<mx:Label text="Filter" y="8" right="188"/>
+						<mx:TextInput id="appFilterField" height="20" change="filterApplication()" y="6" right="20" width="160"/>			
+						<mx:Tree id="tree" dataProvider="{appFiltered}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" itemOpen="treeOpen(event)" click="treeClick(event)" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
+					</mx:Canvas>
+					<mx:Canvas id="inspectorCanvas" width="350" minWidth="250" height="100%">
+						<mx:Panel width="100%" height="100%"/>
+						<mx:Label text="INSPECTOR" fontWeight="bold" fontSize="11" x="10" y="8"/>
+						<mx:Image y="32" source="skin/assets/TabBar-background.png" left="5" right="5" scaleContent="false" height="18"/>
+						<mx:TabBar dataProvider="{viewstack}" x="5" y="32" height="18" toolTip=""/>
+						<mx:ViewStack id="viewstack" left="5" top="50" right="5" bottom="5">
+							<mx:Canvas id="propertiesCanvas" label="PROPERTIES" width="100%" height="100%">
+								<mx:DataGrid id="propertiesGrid" dataProvider="{properties}" editable="true" left="0" top="0" right="0" bottom="0">
+									<mx:columns>
+										<mx:DataGridColumn headerText="Name" dataField="name" editable="false">
+											<mx:itemRenderer>
+												<mx:Component>
+													<mx:HBox horizontalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+														<mx:Image source="{data['icon']}" width="16" height="16"/>
+														<mx:Label text="{data['name']}" width="100%" color="#000000" toolTip="{'Type: ' + data['type']}"/>
+													</mx:HBox>
+												</mx:Component>
+											</mx:itemRenderer>
+										</mx:DataGridColumn>
+										<mx:DataGridColumn headerText="Value" dataField="value" editable="true" itemEditor="components.PropertyEditor" editorDataField="newValue"/>
+									</mx:columns>
+								</mx:DataGrid>
+							</mx:Canvas>
+							<mx:Canvas id="functionsCanvas" label="METHODS" width="100%" height="100%">
+								<mx:DataGrid id="functionsGrid" dataProvider="{functions}" doubleClickEnabled="true" doubleClick="functionsClick(event)" left="0" top="0" right="0" bottom="0">
+									<mx:columns>
+										<mx:DataGridColumn headerText="Name" dataField="name">
+											<mx:itemRenderer>
+												<mx:Component>
+													<mx:HBox doubleClickEnabled="true" horizontalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+														<mx:Image source="{data['icon']}" width="16" height="16"/>
+														<mx:Label text="{data['name']}" width="100%" color="#000000" toolTip="{'Parameters: ' + data['args']}"/>
+													</mx:HBox>
+												</mx:Component>			
+											</mx:itemRenderer>
+										</mx:DataGridColumn>
+									</mx:columns>
+								</mx:DataGrid>
+							</mx:Canvas>
+						</mx:ViewStack>
+					</mx:Canvas>
+				</mx:HDividedBox>
+			</mx:Canvas>
+			<mx:Canvas id="tracesCanvas" width="100%" height="250" minHeight="80" resize="saveCanvasSize()">
+				<mx:Panel width="100%" height="100%"/>
+				<mx:Label text="TRACES" fontWeight="bold" x="10" y="8" fontSize="11"/>
+				<mx:TextInput id="tracesFilterField" height="20" width="160" change="filterTraces()" y="6" right="102"/>
+				<mx:Label text="Filter" y="8" right="270"/>
+				<mx:VRule height="100%"/>
+				<mx:Button height="22" click="clearTraces()" toolTip="Clear all traces" y="5" label="CLEAR" right="20"/>
+				<mx:DataGrid dataProvider="{tracesFiltered}" id="tracesDatagrid" doubleClickEnabled="true" itemDoubleClick="showTraceWindow(event)" left="5" top="32" right="5" bottom="5">
+					<mx:columns>
+						<mx:DataGridColumn headerText="#" dataField="line" width="30">
+							<mx:itemRenderer>
+								<mx:Component>
+									<mx:HBox doubleClickEnabled="true" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+										<mx:Label text="{data['line']}" color="{data['color']}"/>
+									</mx:HBox>
+								</mx:Component>			
+							</mx:itemRenderer>
+						</mx:DataGridColumn>
+						<mx:DataGridColumn headerText="Time" dataField="time" width="120">
+							<mx:itemRenderer>
+								<mx:Component>
+									<mx:HBox doubleClickEnabled="true" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+										<mx:Label text="{data['time']}" color="{data['color']}"/>
+									</mx:HBox>
+								</mx:Component>			
+							</mx:itemRenderer>
+						</mx:DataGridColumn>
+						<mx:DataGridColumn headerText="Target" dataField="target" width="300">
+							<mx:itemRenderer>
+								<mx:Component>
+									<mx:HBox doubleClickEnabled="true" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+										<mx:Label text="{data['target']}" color="{data['color']}"/>
+									</mx:HBox>
+								</mx:Component>			
+							</mx:itemRenderer>
+						</mx:DataGridColumn>
+						<mx:DataGridColumn headerText="Message" dataField="message">
+							<mx:itemRenderer>
+								<mx:Component>
+									<mx:HBox doubleClickEnabled="true" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+										<mx:Label text="{data['message']}" color="{data['color']}" width="100%"/>
+									</mx:HBox>
+								</mx:Component>			
+							</mx:itemRenderer>
+						</mx:DataGridColumn>
+					</mx:columns>
+				</mx:DataGrid>
+			</mx:Canvas>
+		</mx:VDividedBox>
+		<mx:Canvas id="advertisement" width="100%" height="26" backgroundAlpha="1" backgroundColor="#666666" buttonMode="true" useHandCursor="true" rollOver="advertisementRollOver()" rollOut="advertisementRollOut()" click="advertisementClick(event)">
+			<mx:Label id="advertisementLabel" y="4" mouseEnabled="false" mouseChildren="false" text="22-01-2009 - First private beta of the new MonsterDebugger ready!" left="10" right="50" color="#CCCCCC" fontWeight="normal"/>
+		</mx:Canvas>
+	</mx:VBox>
+	<mx:Canvas id="errorCanvas" width="100%" height="100%" backgroundAlpha="0.7" backgroundColor="#000000" visible="false">
+		<mx:Canvas width="300" height="200" horizontalCenter="0" verticalCenter="0">		
+			<mx:Panel width="100%" height="100%"/>
+			<mx:Label text="ERROR" fontWeight="bold" x="10" y="8" fontSize="11"/>
+			<mx:TextArea left="3" top="30" right="3" bottom="3" paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="10" fontSize="11" fontWeight="bold">
+				<mx:text>The debugger connection is already in use, please restart the debugger and try again.</mx:text>
+			</mx:TextArea>
+		</mx:Canvas>
+	</mx:Canvas>
+</mx:WindowedApplication>

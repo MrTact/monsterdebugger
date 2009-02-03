@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Window xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:components="components.*" title="De MonsterDebugger - Help" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" width="820" height="500" minWidth="380" minHeight="285">
+
+	<mx:Script>
+		<![CDATA[
+		
+			// Say hello to the workaround...
+			// This is really strange but it shows the scrollbar!
+			private function scrollbarCheck():void
+			{
+				// No clue why this works, but is does so we're happy :-)
+				html.verticalScrollPosition++;
+			}
+			
+		]]>	
+	</mx:Script>
+	
+	<mx:Panel width="100%" height="100%"/>
+	<mx:Label text="HELP" fontWeight="bold" x="10" y="8" fontSize="11"/>
+	<mx:Canvas width="100%" height="100%">
+		<mx:HTML id="html" left="4" top="31" bottom="4" right="4" location="/help/index.html" htmlRender="scrollbarCheck()"/>
+	</mx:Canvas>
+	
+</mx:Window>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Box xmlns:mx="http://www.adobe.com/2006/mxml" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+
+	<mx:Script>
+		<![CDATA[
+		
+		
+			// Private types
+			private const TYPE_BOOLEAN				:String = "Boolean";
+			private const TYPE_NUMBER				:String = "Number";
+			private const TYPE_OBJECT				:String = "Object";
+			private const TYPE_STRING				:String = "String";
+			private const TYPE_INT					:String = "int";
+			private const TYPE_UINT					:String = "uint";
+			
+			
+			/**
+			 * Set the data in the field
+			 * @param value: The value object
+			 */
+			override public function set data(value:Object):void
+			{
+				// Super the data
+				super.data = value;
+				
+				// Hide the items
+				inputString.visible = false;
+				inputNumber.visible = false;
+				inputInt.visible = false;
+				inputUint.visible = false;
+				inputBoolean.visible = false;
+				inputLabel.visible = false;
+				
+				// Save the needed vars
+				var edit:Boolean = value["edit"];
+				var type:String = value["type"];
+				
+				// Check if we can edit the field
+				if (edit && type == TYPE_STRING)
+				{
+					inputString.visible = true;
+					inputString.text = value["value"];
+				}
+				else if (edit && type == TYPE_NUMBER)
+				{
+					inputNumber.visible = true;
+					inputNumber.value = value["value"];
+				}
+				else if (edit && type == TYPE_INT)
+				{
+					inputInt.visible = true;
+					inputInt.value = value["value"];
+				}
+				else if (edit && type == TYPE_UINT)
+				{
+					inputUint.visible = true;
+					inputUint.value = value["value"];
+				}
+				else if (edit && type == TYPE_BOOLEAN)
+				{
+					inputBoolean.visible = true;
+					inputBoolean.selectedIndex = value["value"] == true ? 0 : 1
+				}
+				else
+				{
+					inputLabel.visible = true;
+					inputLabel.text = value["value"];
+				}
+				
+				// Set the value
+				newValue = value["value"];
+			}
+			
+			
+		]]>
+	</mx:Script>
+	
+	<mx:Object id="newValue"/>
+	
+	<mx:Canvas horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+		<mx:Label id="inputLabel" color="#000000" width="100%" x="5" y="2"/>
+		<mx:TextInput id="inputString" x="4" paddingLeft="3" paddingRight="3" width="100%" height="22" change="{newValue = String(inputString.text); parentDocument.propertiesUpdate(event)}"/>
+		<mx:NumericStepper id="inputNumber" x="4" paddingLeft="3" paddingRight="3" width="100%" height="22" minimum="{-Number.MAX_VALUE}" maximum="{Number.MAX_VALUE}" stepSize="1" change="{newValue = Number(inputNumber.value); parentDocument.propertiesUpdate(event)}"/>
+		<mx:NumericStepper id="inputInt" x="4" paddingLeft="3" paddingRight="3" width="100%" height="22" minimum="{-int.MAX_VALUE}" maximum="{int.MAX_VALUE}" stepSize="1" change="{newValue = int(inputNumber.value); parentDocument.propertiesUpdate(event)}"/>
+		<mx:NumericStepper id="inputUint" x="4" paddingLeft="3" paddingRight="3" width="100%" height="22" minimum="0" maximum="{uint.MAX_VALUE}" stepSize="1" change="{newValue = uint(inputNumber.value); parentDocument.propertiesUpdate(event)}"/>
+		<mx:ComboBox id="inputBoolean" x="3" paddingLeft="3" paddingRight="3" width="100%" height="22" change="{newValue = Boolean(inputBoolean.selectedIndex == 0); parentDocument.propertiesUpdate(event)}">
+			<mx:dataProvider>
+				<mx:Array>
+					<mx:String>true</mx:String>
+					<mx:String>false</mx:String>
+				</mx:Array>
+			</mx:dataProvider>
+		</mx:ComboBox>
+	</mx:Canvas>
+	
+</mx:Box>

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Box xmlns:mx="http://www.adobe.com/2006/mxml" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+
+	<mx:Script>
+		<![CDATA[
+		
+		
+			// Private types
+			private const TYPE_BOOLEAN				:String = "Boolean";
+			private const TYPE_NUMBER				:String = "Number";
+			private const TYPE_OBJECT				:String = "Object";
+			private const TYPE_STRING				:String = "String";
+			private const TYPE_INT					:String = "int";
+			private const TYPE_UINT					:String = "uint";
+			
+			
+			// Variables needed
+			public var type:String;
+			public var optional:String;
+			public var input:Object;
+			
+			
+			/**
+			 * Set the data in the field
+			 * @param value: The value object
+			 */
+			[Bindable]
+			public override function set data(value:Object):void
+			{
+				// Super the data
+				super.data = value;
+				
+				// Hide the items
+				inputOther.visible = false;
+				inputString.visible = false;
+				inputNumber.visible = false;
+				inputInt.visible = false;
+				inputUint.visible = false;
+				inputBoolean.visible = false;
+				checkboxOptional.visible = false;
+				
+				// Save the needed vars
+				type = value["type"];
+				optional = value["optional"];
+				
+				// Set the type
+				typeLabel.text = type;
+				
+				// Check if we can edit the field
+				if (type == TYPE_STRING)
+				{
+					input = inputString;
+					inputString.visible = true;
+					inputString.text = "";
+					newValue = "";
+				}
+				else if (type == TYPE_NUMBER)
+				{
+					input = inputNumber;
+					inputNumber.visible = true;
+					inputNumber.value = 0;
+					newValue = 0;
+				}
+				else if (type == TYPE_INT)
+				{
+					input = inputInt;
+					inputInt.visible = true;
+					inputInt.value = 0;
+					newValue = 0;
+				}
+				else if (type == TYPE_UINT)
+				{
+					input = inputUint;
+					inputUint.visible = true;
+					inputUint.value = 0;
+					newValue = 0;
+				}
+				else if (type == TYPE_BOOLEAN)
+				{
+					input = inputBoolean;
+					inputBoolean.visible = true;
+					inputBoolean.selectedIndex = 0;
+					newValue = true;
+				}
+				else
+				{
+					input = inputOther;
+					inputOther.visible = true;
+					inputOther.text = "null";
+					newValue = null;
+				}
+				
+				// If the parameter is optional
+				// Show the checkbox
+				if (optional == "true") {
+					checkboxOptional.visible = true;
+					input.enabled = false;
+				}
+			}
+			
+			
+			/**
+			 * Checkbox handlers
+			 */
+			private function checkboxDownHandler():void {				
+				parentDocument.checkboxDownHander();
+			}
+			private function checkboxHandler():void {				
+				parentDocument.checkboxHander();
+			}
+			
+			
+		]]>
+	</mx:Script>
+	
+	<mx:Object id="newValue"/>
+	
+	<mx:Canvas horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+		<mx:Label id="typeLabel" color="#000000" width="95" y="2" text=""/>
+		<mx:TextInput id="inputOther" paddingLeft="3" paddingRight="3" x="100" width="160" height="22" enabled="false" editable="false"/>
+		<mx:TextInput id="inputString" paddingLeft="3" paddingRight="3" x="100" width="160" height="22" change="{newValue = String(inputString.text)}"/>
+		<mx:NumericStepper id="inputNumber" paddingLeft="3" paddingRight="3" x="100" width="160" height="22" minimum="{-Number.MAX_VALUE}" maximum="{Number.MAX_VALUE}" stepSize="1" change="{newValue = Number(inputNumber.value)}"/>
+		<mx:NumericStepper id="inputInt" paddingLeft="3" paddingRight="3" x="100" width="160" height="22" minimum="{-int.MAX_VALUE}" maximum="{int.MAX_VALUE}" stepSize="1" change="{newValue = int(inputInt.value)}"/>
+		<mx:NumericStepper id="inputUint" paddingLeft="3" paddingRight="3" x="100" width="160" height="22" minimum="0" maximum="{uint.MAX_VALUE}" stepSize="1" change="{newValue = uint(inputUint.value)}"/>
+		<mx:ComboBox id="inputBoolean" x="100" width="160" height="22" change="{newValue = Boolean(inputBoolean.selectedIndex == 0)}">
+			<mx:dataProvider>
+				<mx:Array>
+					<mx:String>true</mx:String>
+					<mx:String>false</mx:String>
+				</mx:Array>
+			</mx:dataProvider>
+		</mx:ComboBox>
+		<mx:CheckBox id="checkboxOptional" x="270" y="0" label="Include"  mouseDown="checkboxDownHandler()" click="checkboxHandler()"/>
+	</mx:Canvas>
+	
+</mx:Box>

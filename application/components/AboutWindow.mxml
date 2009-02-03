@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Window xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:components="components.*" title="De MonsterDebugger - About" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" width="760" height="395" resizable="false" maximizable="false" minimizable="false">
+
+	<mx:Panel width="100%" height="100%"/>
+	<mx:Label text="ABOUT" fontWeight="bold" x="10" y="8" fontSize="11"/>
+	<mx:Canvas width="100%" height="100%">
+		<mx:Image source="icon/about.png" scaleContent="false" left="4" right="4" top="31" bottom="4"/>
+		<mx:Text x="30" y="80" htmlText="The MonsterDebugger is a lightweight debugger for Adobe Flex, Flash and AIR projects that is made and maintained by Amsterdam based design studio De Monsters. You are free to copy, distribute and transmit the work under the following conditions:&#xa;&#xa;You must attribute the work in the manner specified by the author or licensor (but not in any way that suggests that they endorse you or your use of the work).&#xa;&#xa;For more information go to &lt;a href=&quot;http://www.deMonsterDebugger.com&quot;&gt;http://www.deMonsterDebugger.com&lt;/a&gt;" width="294" height="241" fontSize="11"/>
+		<mx:Label text="Version 2.0" y="360" x="30"/>
+	</mx:Canvas>
+	
+</mx:Window>

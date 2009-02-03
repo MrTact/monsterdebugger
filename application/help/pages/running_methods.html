@@ -1,0 +1,44 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title></title>
+		<link rel="stylesheet" href="../style.css" type="text/css" media="screen"/>
+	</head>
+	<body>
+		<h2>Running Methods</h2>
+		When you click on an object in the live application panel, the inspector panel will display it's properties and methods.
+		To run a method, just double click on its name. 		
+		Note: You can execute a method on runtime if the required arguments are of the type String, Number, Boolean, int or uint.
+		<br/><br/>		
+		<img src="../images/inspector_methods.jpg"/>
+		<br/><br/><br/>
+		Again, we use icons to distinct between different method types.
+		<br/><br/>
+		<table border="0" cellspacing="0" cellpadding="0">
+			<tr>
+				<td width="50px"><strong>Icon</strong></td>
+				<td><strong>Description</strong></td>
+			</tr>
+			<tr>
+				<td><img class="icon" src="../images/bullet_white.png"/></td>
+				<td>Non runable method</td>
+			</tr>
+			<tr>
+				<td><img class="icon" src="../images/lightning.png"/></td>
+				<td>Runable method</td>
+			</tr>
+		</table>
+		<br/><br/>
+		If you double click on a runnable method, a dialogue window will appear. 
+		In this example we've clicked the getChildAt() function. 
+		This method requires an integer as argument and will return a DisplayObject.
+		<br/><br/>		
+		<img src="../images/method_window.jpg"/>
+		<br/><br/><br/>
+		When you hit RUN, De MonsterDebugger will ask your application to execute the function, it will catch the return value and send it directly back to you. 
+		The return object is displayed in the same readable manner as a regular trace (as can be seen below).
+		<br/><br/>		
+		<img src="../images/method_return.jpg"/>
+		<br/><br/><br/>
+	</body>
+</html>

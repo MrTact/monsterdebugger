@@ -1,0 +1,66 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title></title>
+		<link rel="stylesheet" href="../style.css" type="text/css" media="screen"/>
+	</head>
+	<body>
+	
+<h2>Example: Flex</h2>
+<strong>#1</strong> Start a new Flex project<br/><br/>
+<img src="../images/new_flex_project.jpg"/><br/><br/>
+<br/>	
+<strong>#2</strong> Your MXML code should look something like this<br/><br/>
+<div class="code">
+<pre>
+&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" 
+layout="absolute"&gt;
+	
+&lt;/mx:Application&gt;
+</pre>
+</div>
+<br/>
+<strong>#3</strong> Start De MonsterDebugger and export the client class<br/><br/>
+<img src="../images/export_class.jpg"/><br/><br/>
+<br/>
+<strong>#4</strong> Include De MonsterDebugger class in your MXML document<br/><br/>
+<div class="code">
+<pre>
+&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" 
+layout="absolute" initialize="init()"&gt;
+	&lt;mx:Script&gt;
+		&lt;![CDATA[
+		
+		// Import the debugger
+		import nl.demonsters.debugger.MonsterDebugger;
+		
+		// Variable to hold the debugger
+		private var debugger:MonsterDebugger;
+		
+		private function onInit():void
+		{
+			// Init the debugger
+			debugger = new MonsterDebugger(this);
+			
+			// Send a simple trace
+			MonsterDebugger.trace(this, "Hello World!");
+		}
+		]]&gt;
+	&lt;/mx:Script&gt;
+&lt;/mx:Application&gt;
+</pre>
+</div>
+<br/>
+<strong>#5</strong> Build and run your application<br/>
+Note: The Flex application should run on a live domain or localhost test server in order to work, due to the sandbox security model.
+<br/><br/>
+<img src="../images/first_trace.jpg"/><br/><br/>
+<br/>
+<strong>More information:</strong><br/>
+<a href="live_application.html">Exploring your application</a><br/>
+<a href="traces.html">Sending traces</a><br/>
+
+	</body>
+</html>

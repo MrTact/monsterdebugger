@@ -1,0 +1,47 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title></title>
+		<link rel="stylesheet" href="../style.css" type="text/css" media="screen"/>
+	</head>
+	<body>
+		<h2>Traces</h2>
+		The trace function of De MonsterDebugger can be used to display standard objects like Strings, Numbers, Arrays, etc. 
+		But it can also be used to display more complex objects like custom classes, XML or an Array containing Objects with XML nodes for that matter. 
+		It will send a snapshot of those objects to the desktop application where you can browse through them. 
+		<br/><br/>
+		
+<strong>Trace a String:</strong><br/><br/>
+<div class="code">
+<pre>
+MonsterDebugger.trace(this, "Hello World!");
+</pre>
+</div>
+<img src="../images/trace_string.jpg"/><br/>
+<br/>
+<br/>
+<strong>Trace an Array:</strong><br/><br/>
+<div class="code">
+<pre>
+var foo:Array = ["Apples", "Oranges", "Melons"];
+MonsterDebugger.trace(this, foo);
+</pre>
+</div>
+<img src="../images/trace_array.jpg"/><br/>
+<br/>
+<br/>
+<strong>Trace an Object:</strong><br/><br/>
+<div class="code">
+<pre>
+var person:Object = {name:"Mike", age:25, gender:"Male"};
+MonsterDebugger.trace(this, person);
+</pre>
+</div>
+<img src="../images/trace_object.jpg"/><br/>
+<br/>
+<br/>
+<strong>More information:</strong><br/>
+<a href="advanced_traces.html">Advanced trace options</a><br/>
+
+	</body>
+</html>
