@@ -2,32 +2,47 @@
 
 <!-- 
 
-GRAWH!
-
-This is the source code for De MonsterDebugger. This AIR
-application listens to data that is transferred from Flash,
-AIR or FLEX applications that send debug information using
-the appropriate classes.
-
-This application will look at the data that is gathered and 
-will present it in a usable way. You can trace strings, 
-arrays, objects, XML and even custom classes to De
-MonsterDebugger. 
-
-Be aware that any traces made to De MonsterDebugger may 
-be viewed by others. De MonsterDebugger is intended to be 
-used to debug unpublished Flash, AIR of FLEX applications in
-the environment that they will be used in as a final product. 
-Please make sure that you do not send any debug material to
-the debugger from a live running application.  
-
-Use at your own risk.
-
-@author		Ferdi Koomen
-@company	De Monsters
-@link 		http://www.deMonsterDebugger.com
-@version 	2.0	
+	This is the source code for De MonsterDebugger. This AIR
+	application listens to data that is transferred from Flash,
+	AIR or FLEX applications that send debug information using
+	the appropriate classes.
 	
+	This application will look at the data that is gathered and 
+	will present it in a usable way. You can trace strings, 
+	arrays, objects, XML and even custom classes to De
+	MonsterDebugger. 
+	
+	Be aware that any traces made to De MonsterDebugger may 
+	be viewed by others. De MonsterDebugger is intended to be 
+	used to debug unpublished Flash, AIR of FLEX applications in
+	the environment that they will be used in as a final product. 
+	Please make sure that you do not send any debug material to
+	the debugger from a live running application.  
+	
+	Use at your own risk.
+	
+	@author		Ferdi Koomen
+	@company	De Monsters
+	@link 		http://www.deMonsterDebugger.com
+	@version 	2.0	
+	
+	
+	
+	Copyright 2009, De Monsters
+	
+	This program is free software: you can redistribute it and/or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+	
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
+	
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 -->
 
 <mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:fc="http://www.adobe.com/2006/fc" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" menu="{nativeMenu}" initialize="init()" creationComplete="creationComplete()">
