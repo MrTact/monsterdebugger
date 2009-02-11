@@ -9,7 +9,9 @@
 			private function scrollbarCheck():void
 			{
 				// No clue why this works, but is does so we're happy :-)
-				html.verticalScrollPosition++;
+				if (visible) {
+					html.verticalScrollPosition++;
+				}
 			}
 			
 		]]>	

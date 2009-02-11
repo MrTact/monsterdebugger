@@ -24,7 +24,7 @@
 	@author		Ferdi Koomen
 	@company	De Monsters
 	@link 		http://www.deMonsterDebugger.com
-	@version 	2.0	
+	@version 	2.01
 	
 	
 	
@@ -45,7 +45,7 @@
 
 -->
 
-<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:fc="http://www.adobe.com/2006/fc" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" menu="{nativeMenu}" initialize="init()" creationComplete="creationComplete()">
+<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:fc="http://www.adobe.com/2006/fc" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" menu="{nativeMenu}" initialize="init()" creationComplete="creationComplete()" horizontalScrollPolicy="off" verticalScrollPolicy="off">
 	
 	
 	<mx:Style source="skin/style.css"/>
@@ -53,6 +53,7 @@
 	
 	<mx:Script>
 		<![CDATA[
+			
 			
 			// Import classes
 			import com.adobe.utils.StringUtil;
@@ -67,6 +68,7 @@
 			import mx.events.MenuEvent;
 			import mx.events.NumericStepperEvent;
 			import mx.events.TreeEvent;
+			import mx.events.ResizeEvent;
 			import mx.events.FlexNativeMenuEvent;
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
@@ -78,6 +80,7 @@
 			import flash.events.ProgressEvent;
 			import flash.events.SecurityErrorEvent;
 			import flash.events.NativeWindowDisplayStateEvent;
+			import flash.events.NativeWindowBoundsEvent;
 			import flash.events.StatusEvent;
 			import flash.geom.Rectangle;
 			import flash.net.LocalConnection;
@@ -89,7 +92,7 @@
 			import components.AboutWindow;
 			import components.HelpWindow;
 			import components.TraceWindow;
-			import components.MessageWindow;
+			import components.ExportedWindow;
 			import components.MethodWindow;
 			import deng.fzip.FZip;
 			import deng.fzip.FZipFile;
@@ -132,7 +135,6 @@
 			
 			
 			// Types
-			private const TYPE_ALL					:String = "*";
 			private const TYPE_ARRAY				:String = "Array";
 			private const TYPE_BOOLEAN				:String = "Boolean";
 			private const TYPE_NUMBER				:String = "Number";
@@ -184,7 +186,7 @@
 			
 			
 			// Current version
-			private const VERSION:String = "2.0";
+			private const VERSION:String = "2.01";
 			
 			
 			// The current selected tree item target
@@ -206,6 +208,10 @@
 			// Temp file for buffering incoming data
 			private var bufferPackage:ByteArray = new ByteArray();
 			
+			
+			// Error message for old client
+			private var versionError:Object = null;
+			
 	        
 			// Zip file
 			private var zip:FZip;
@@ -221,6 +227,7 @@
 			private var uiInspectorWidth:Number = 350;
 			private var uiLoaded:Boolean = false;
 			private var dontShowProperties:Boolean = false;
+			private var alwaysOnTop:Boolean = false;
 			
 			
 			// Bottom offset
@@ -266,6 +273,7 @@
 					dontShowProperties = so.data.dontShowProperties;
 					tickerMessage = so.data.tickerMessage;
 					tickerURL = so.data.tickerURL;
+					alwaysOnTop = so.data.alwaysOnTop;
 				}
 				else
 				{
@@ -284,6 +292,7 @@
 					so.data.windowMaximized = false;
 					so.data.tickerMessage = tickerMessage;
 					so.data.tickerURL = tickerURL;
+					so.data.alwaysOnTop = alwaysOnTop;
 					so.data.saved = true;
 				}
 				
@@ -313,12 +322,27 @@
 				
 				// Add event listeners to the window
 				nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGE, updateInterface);
+				nativeWindow.addEventListener(NativeWindowBoundsEvent.RESIZING, resizeInterface);
+				nativeWindow.addEventListener(NativeWindowBoundsEvent.RESIZE, resizeInterface);
 				
 				// Set the inspector width
 				inspectorCanvas.width = uiInspectorWidth;
-					
+				
 				// Show the window
 				nativeWindow.activate();
+				
+				// Check if the window should be on top
+				// The value should be set with a small delay
+				// else this won't work...
+				var timer:Timer = new Timer(100);
+				timer.start();
+				timer.addEventListener(TimerEvent.TIMER, function(event:TimerEvent):void {
+					timer.stop();
+					if (alwaysOnTop) {
+						nativeWindow.orderToFront();
+						nativeWindow.alwaysInFront = true;
+					}
+				});
 				
 				// Init the updater
 				updater = new ApplicationUpdaterUI();
@@ -358,7 +382,7 @@
 			 */
 			public function onReceivedData(data:Object):void
 			{
-				// Check if we receibed the first package
+				// Check if we received the first package
 				if (data.nr == 1)
 				{
 					// Yes, so clear the temp file
@@ -400,6 +424,9 @@
 					} catch (error:Error) {
 						// Do nothing
 					}
+					
+					// Clear the item
+					item = null;
 				}
 			}
 			
@@ -434,6 +461,20 @@
 						
 						// Received hi!
 						case COMMAND_HELLO:
+							versionError = null;
+							var clientVersion:Number = Number(command.version);
+							var appVersion:Number = Number(VERSION);
+							if (clientVersion < appVersion) {
+								versionError = {
+									line:		"", 
+									time:		"", 
+									target:		"De MonsterDebugger", 
+									color:		0xCC0000,
+									message: 	"Please update your client class to version " + clientVersion +". Double click here to export the class.", 
+									xml: 		null
+								};
+								tracesFiltered.addItem(versionError);
+							}
 		       				target = null;
 		       				appAll.source = null;
 		       				appFiltered.source = null;
@@ -602,6 +643,12 @@
 								message = stripBreaks(htmlUnescape(command.xml.children()[0].@label)) + " ...";
 							}
 							
+							// Compress the xml
+							// This will save memory
+							var bytes:ByteArray = new ByteArray();
+							bytes.writeObject(command.xml);
+							bytes.compress();
+							
 							// Save the item
 							var item:Object = {
 								line:		tracesAll.length + 1, 
@@ -609,9 +656,9 @@
 								target:		command.target, 
 								color:		command.color,
 								message: 	message, 
-								xml: 		command.xml
+								bytes: 		bytes
 							};
-
+							
 							// Add the item to the array
 							tracesAll.addItem(item);
 							
@@ -625,6 +672,11 @@
 								if (searchString != "") {
 									searchTerms.push(searchString);
 								}
+							}
+							
+							// Check if we should add the version alert
+							if (versionError != null) {
+								tracesFiltered.addItem(versionError);
 							}
 							
 							// Check if a filter term is given
@@ -647,6 +699,9 @@
 									tracesFiltered.addItem(item);
 								}
 							}
+							
+							// Clear the item
+							item = null;				
 							
 						break;
 					}
@@ -700,7 +755,12 @@
 						searchTerms.push(searchString);
 					}
 				}
-							
+				
+				// Check if we should add the version alert
+				if (versionError != null) {
+					tracesFiltered.addItem(versionError);
+				}
+						
 				// Check if a filter term is given
 				if (searchTerms.join("") == "")
 				{
@@ -839,6 +899,9 @@
 					// Set the scroll position
 					tree.verticalScrollPosition = vscroll;
 					tree.horizontalScrollPosition = hscroll;
+					
+					// Clear the data
+					data = null;
 				}
 			}
 			
@@ -921,12 +984,30 @@
 					// Get the data
 					var item:Object = tracesFiltered.getItemAt(event.currentTarget.selectedIndex);
 					
-					// Create the window
-					var traceWindow:TraceWindow = new TraceWindow();
-					traceWindow.setData(item);
-					traceWindow.open();
-					centerWindow(traceWindow);
-					windows.push(traceWindow);
+					// Check if the user clicked the version alert
+					if (item.target == "De MonsterDebugger")
+					{
+						// Export the client class
+						var clientFile:File = File.desktopDirectory;
+						clientFile.browseForDirectory("Select a directory");
+						clientFile.addEventListener(Event.SELECT, function(event:Event):void {
+							zipExpandPath = clientFile.nativePath;
+							zipFileExpand("client");
+						});
+					}
+					else
+					{
+						// Create the window
+						var traceWindow:TraceWindow = new TraceWindow();
+						traceWindow.setData(item);
+						traceWindow.open();
+						centerWindow(traceWindow);
+						windows.push(traceWindow);
+						if (alwaysOnTop) {
+							traceWindow.orderToFront();
+							traceWindow.alwaysInFront = true;
+						}
+					}
 				}
 			}
 			
@@ -1020,7 +1101,7 @@
 					var item:Object = functionsGrid.selectedItem;
 					
 					// Check if we can run the function
-					if(item.runnable)
+					if (item.runnable)
 					{
 						// Create the window
 						var methodWindow:MethodWindow = new MethodWindow();
@@ -1029,6 +1110,10 @@
 						methodWindow.open();
 						centerWindow(methodWindow);
 						windows.push(methodWindow);
+						if (alwaysOnTop) {
+							methodWindow.orderToFront();
+							methodWindow.alwaysInFront = true;
+						}
 					}
 				}
 			}
@@ -1142,6 +1227,7 @@
 					so.data.uiTracesHeight = uiTracesHeight;
 					so.data.uiInspectorWidth = uiInspectorWidth;
 					so.data.dontShowProperties = dontShowProperties;
+					so.data.alwaysOnTop = alwaysOnTop;
 					so.data.saved = true;
 				}
 			}
@@ -1215,9 +1301,13 @@
 			private function zipFileComplete(event:Event):void
 			{
 				// Show an alert here
-				var messageWindow:MessageWindow = new MessageWindow();
-				messageWindow.open();
-				centerWindow(messageWindow);
+				var exportedWindow:ExportedWindow = new ExportedWindow();
+				exportedWindow.open();
+				centerWindow(exportedWindow);
+				if (alwaysOnTop) {
+					exportedWindow.orderToFront();
+					exportedWindow.alwaysInFront = true;
+				}
 			}
 			
 			
@@ -1294,12 +1384,20 @@
 					var helpWindow:HelpWindow = new HelpWindow();
 					helpWindow.open();
 					centerWindow(helpWindow);
+					if (alwaysOnTop) {
+						helpWindow.orderToFront();
+						helpWindow.alwaysInFront = true;
+					}
 					break;
 					
 					case "about":
 					var aboutWindow:AboutWindow = new AboutWindow();
 					aboutWindow.open();
 					centerWindow(aboutWindow);
+					if (alwaysOnTop) {
+						aboutWindow.orderToFront();
+						aboutWindow.alwaysInFront = true;
+					}
 					break;
 					
 					case "website":
@@ -1389,14 +1487,46 @@
 					showTraces = true;
 					updateInterface();
 					break;
+					
+					case "alwaysOnTop":
+					alwaysOnTop =! alwaysOnTop;
+					if (alwaysOnTop) {
+						nativeWindow.orderToFront();
+						nativeWindow.alwaysInFront = true;
+					} else {
+						nativeWindow.alwaysInFront = false;
+					}
+					updateInterface();
+					break;
 				}	
 			}
 			
 			
 			/**
-			 * Save the panel sizes (relative)
+			 * Add resize event listeners to the vbox
 			 */
-			private function saveCanvasSize():void
+			private function addResizeListeners():void
+			{
+				appCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+				tracesCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+			}
+			
+			
+			/**
+			 * Remove resize event listeners to the vbox
+			 */
+			private function removeResizeListeners():void
+			{
+				appCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+				tracesCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+			}
+			
+			
+			/**
+			 * Save the panel sizes (relative)
+			 * @param event: Reize event from the canvas
+			 */
+			private function saveCanvasSize(event:ResizeEvent):void
 			{
 				if (uiLoaded && showTraces && showApp && tracesCanvas.visible && appCanvas.visible){
 					var total:Number = appCanvas.height + tracesCanvas.height;
@@ -1407,8 +1537,24 @@
 			
 			
 			/**
+			 * Resizing the window
+			 * @param event: Optional resize event
+			 */
+			private function resizeInterface(event:NativeWindowBoundsEvent):void
+			{
+				// Remove the event listeners
+				removeResizeListeners();
+				
+				// Update the interface
+				if (uiLoaded) {
+					updateInterface();
+				}
+			}
+			
+					
+			/**
 			 * Resize the interface panels
-			 * @param event: Optional window resize event
+			 * @param event: Optional window state change event
 			 */
 			private function updateInterface(event:NativeWindowDisplayStateEvent = null):void
 			{
@@ -1425,21 +1571,37 @@
 				applicationMenu.menu[1].menuitem[9].@enabled = true;
 				applicationMenu.menu[1].menuitem[11].@enabled = true;
 				applicationMenu.menu[1].menuitem[12].@enabled = true;
-					
+				
 				// Show both
 				if (showTraces && showApp)
 				{
+					// Save the height
+					var appCanvasHeight:int = Math.round((uiHeight / 100) * uiAppHeight);
+					var tracesCanvasHeight:int = Math.round((uiHeight / 100) * uiTracesHeight);
+					
+					// Check for min height
+					if (appCanvasHeight < 150) {
+						tracesCanvasHeight -= (150 - appCanvasHeight);
+						appCanvasHeight = 150;
+					}
+					
+					// Check for min height
+					if (tracesCanvasHeight < 80) {
+						appCanvasHeight -= (80 - tracesCanvasHeight);
+						tracesCanvasHeight = 80;
+					}
+					
 					// Max the application canvas
 					appCanvas.visible = true;
 					appCanvas.minHeight = 150;
 					appCanvas.maxHeight = 10000;
-					appCanvas.height = Math.round((uiHeight / 100) * uiAppHeight);
+					appCanvas.height = appCanvasHeight;
 					
 					// Max the tree canvas
 					tracesCanvas.visible = true;
 					tracesCanvas.minHeight = 80;
 					tracesCanvas.maxHeight = 10000;
-					tracesCanvas.height = Math.round((uiHeight / 100) * uiTracesHeight);
+					tracesCanvas.height = tracesCanvasHeight;
 					
 					// Set the menus
 					applicationMenu.menu[2].menuitem[0].@toggled = false;
@@ -1491,7 +1653,7 @@
 					applicationMenu.menu[2].menuitem[0].@toggled = false;
 					applicationMenu.menu[2].menuitem[1].@toggled = true;
 					applicationMenu.menu[2].menuitem[2].@toggled = false;
-				
+					
 					// Enable / disable the menus
 					applicationMenu.menu[1].menuitem[0].@enabled = false;
 					applicationMenu.menu[1].menuitem[3].@enabled = false;
@@ -1503,6 +1665,7 @@
 				
 				// Set the menu options
 				applicationMenu.menu[1].menuitem[6].@toggled = dontShowProperties;
+				applicationMenu.menu[2].menuitem[4].@toggled = alwaysOnTop;
 				
 				// Set the loaded flag
 				uiLoaded = true;
@@ -1619,21 +1782,23 @@
 				<menuitem label="Focus on Live Application Filter" command="focusFilterApp" key="f" mnemonic="9"/>
 				<menuitem label="Focus on Traces Filter" command="focusFilterTraces" key="F" mnemonic="9"/>
 				<menuitem label="" type="separator"/>
-				<menuitem label="Show Properties" type="check" toggled="true" command="showProperties" key="p" mnemonic="5"/>
-				<menuitem label="Show Methods" type="check" toggled="false" command="showMethods" key="m" mnemonic="5"/>
+				<menuitem label="Show Properties" type="check" toggled="true" command="showProperties" key="P" mnemonic="5"/>
+				<menuitem label="Show Methods" type="check" toggled="false" command="showMethods" key="M" mnemonic="5"/>
 				<menuitem label="" type="separator"/>
 				<menuitem label="Don't Show Single Properties" type="check" toggled="false" command="dontShowProperties" key="o" mnemonic="0"/>
 				<menuitem label="" type="separator"/>
 				<menuitem label="Refresh Inspector" command="refreshInspector" key="r" mnemonic="9"/>
 				<menuitem label="Refresh Live Application" command="refreshApplication" key="R" mnemonic="9"/>
 				<menuitem label="" type="separator"/>
-				<menuitem label="Clear Highlight" command="clearHighlight" key="h" mnemonic="6"/>
+				<menuitem label="Clear Highlight" command="clearHighlight" key="i" mnemonic="6"/>
 				<menuitem label="Clear Traces" command="clearTraces" key="x" mnemonic="0"/>
 			</menu>
 			<menu label="Window" mnemonic="0">
 				<menuitem label="Show Live Application" type="check" toggled="false" command="showApp" key="3" mnemonic="5"/>
 				<menuitem label="Show Traces" type="check" toggled="false" command="showTraces" key="2" mnemonic="5"/>
 				<menuitem label="Show Both" type="check" toggled="true" command="showBoth" key="1" mnemonic="5"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="Always on top" type="check" toggled="false" command="alwaysOnTop" mnemonic="1"/>
 			</menu>
 			<menu label="Help" mnemonic="0">
 				<menuitem label="Help" command="help" mnemonic="0"/>
@@ -1655,10 +1820,10 @@
 	<mx:FlexNativeMenu id="nativeMenu" dataProvider="{applicationMenu}" labelField="@label" keyEquivalentField="@key" mnemonicIndexField="@mnemonic" keyEquivalentModifiersFunction="standardOSModifier" showRoot="false" itemClick="nativeMenuCommand(event)"/>
 	
 	
-	<mx:VBox x="0" y="1" width="100%" height="100%" horizontalGap="2" verticalGap="2">
-		<mx:VDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true">
-			<mx:Canvas id="appCanvas" width="100%" height="100%" minHeight="150" resize="saveCanvasSize()">
-				<mx:HDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true">
+	<mx:VBox x="0" y="1" width="100%" height="100%" horizontalGap="2" verticalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+		<mx:VDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true"  mouseDown="addResizeListeners()" mouseUp="removeResizeListeners()" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+			<mx:Canvas id="appCanvas" width="100%" height="100%" minHeight="150">
+				<mx:HDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true" horizontalScrollPolicy="off" verticalScrollPolicy="off">
 					<mx:Canvas width="100%" height="100%" minWidth="400">
 						<mx:Panel width="100%" height="100%"/>
 						<mx:Label text="LIVE APPLICATION" fontWeight="bold" x="10" y="8" fontSize="11"/>
@@ -1709,7 +1874,7 @@
 					</mx:Canvas>
 				</mx:HDividedBox>
 			</mx:Canvas>
-			<mx:Canvas id="tracesCanvas" width="100%" height="250" minHeight="80" resize="saveCanvasSize()">
+			<mx:Canvas id="tracesCanvas" width="100%" height="250">
 				<mx:Panel width="100%" height="100%"/>
 				<mx:Label text="TRACES" fontWeight="bold" x="10" y="8" fontSize="11"/>
 				<mx:TextInput id="tracesFilterField" height="20" width="160" change="filterTraces()" y="6" right="102"/>

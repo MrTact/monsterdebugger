@@ -5,7 +5,7 @@
  * @author		Ferdi Koomen
  * @company 	De Monsters
  * @link 		http://www.deMonsterDebugger.com
- * @version 	2.0 
+ * @version 	2.01
  * 
  */
 
@@ -39,7 +39,7 @@ package
 		public var exampleClass:Person = new Person();
 		public var exampleXML:XML = new XML('<cars><car id="1" color="#FF0000">A nice red car</car><car id="2" color="#FFFF00">A yellow cab</car></cars>')
 		
-		
+				
 		public function Main()
 		{
 			// Initialize De MonsterDebugger

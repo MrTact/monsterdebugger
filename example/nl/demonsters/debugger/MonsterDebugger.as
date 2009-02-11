@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen
  * @company 	De Monsters
  * @link 		http://www.deMonsterDebugger.com
- * @version 	2.0 
+ * @version 	2.01
  * 
  * 
  * 
@@ -72,6 +72,11 @@ package nl.demonsters.debugger
 		private const LINE_IN					:String = "_debuggerBlue";
 		
 		
+		// The allow domain for the local connection
+		// * = Allow communication with all domains
+		private const ALLOWED_DOMAIN			:String = "*";
+		
+		
 		// Error colors
 		public static const COLOR_NORMAL		:uint = 0x111111;
 		public static const COLOR_ERROR			:uint = 0xFF0000;
@@ -93,7 +98,6 @@ package nl.demonsters.debugger
 		
 		
 		// Types
-		private const TYPE_ALL					:String = "*";
 		private const TYPE_VOID					:String = "void";
 		private const TYPE_ARRAY				:String = "Array";
 		private const TYPE_BOOLEAN				:String = "Boolean";
@@ -150,7 +154,7 @@ package nl.demonsters.debugger
 		
 		
 		// Version
-		private const VERSION:Number = 2.0;
+		private const VERSION:Number = 2.01;
 		
 		
 		// The root of the application
@@ -189,7 +193,7 @@ package nl.demonsters.debugger
 				lineIn.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncErrorHandler);
 				lineIn.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
 				lineIn.addEventListener(StatusEvent.STATUS, statusHandler);
-				lineIn.allowDomain("*");
+				lineIn.allowDomain(ALLOWED_DOMAIN);
 				lineIn.client = this;
 				
 				try {
@@ -311,8 +315,8 @@ package nl.demonsters.debugger
 							}
 						}
 						object = getObject(command["target"], 0);
-						if (isDisplayObject(object)) {
-							var bounds:Rectangle = object.getBounds(instance.root);							
+						if (isDisplayObject(object) && isDisplayObject(object.parent)) {
+							var bounds:Rectangle = object.getBounds(object.parent);			
 							highlight = new Sprite();
 							highlight.x = 0;
 							highlight.y = 0;
@@ -884,7 +888,7 @@ package nl.demonsters.debugger
 						
 						// Parse the XML
 						xml += parseXML(object, target + "." + "cildren()", currentDepth, maxDepth);
-												
+						
 						// Close data description if needed
 						if (currentDepth == 1) xml += createNode("/node");
 					}
@@ -1166,10 +1170,10 @@ package nl.demonsters.debugger
 					// Only a text value
 					xml += createNode("node", {
 						icon:			ICON_XMLVALUE,
-						label:			"(" + TYPE_XMLVALUE + ") = " + node,
+						label:			"(" + TYPE_XMLVALUE + ") = " + printObject(node, TYPE_XMLVALUE),
 						name:			"",
 						type:			TYPE_XMLVALUE,
-						value:			node,
+						value:			printObject(node, TYPE_XMLVALUE),
 						target:			target,
 						access:			ACCESS_VARIABLE,
 						permission:		PERMISSION_READWRITE
@@ -1183,7 +1187,7 @@ package nl.demonsters.debugger
 						label:			node.name() + " (" + TYPE_XMLNODE + ")",
 						name:			node.name(),
 						type:			TYPE_XMLNODE,
-						value:			node,
+						value:			"",
 						target:			target,
 						access:			ACCESS_VARIABLE,
 						permission:		PERMISSION_READWRITE
@@ -1193,10 +1197,10 @@ package nl.demonsters.debugger
 					if (node != "") {
 						xml += createNode("node", {
 							icon:			ICON_XMLVALUE,
-							label:			"(" + TYPE_XMLVALUE + ") = " + node,
+							label:			"(" + TYPE_XMLVALUE + ") = " + printObject(node, TYPE_XMLVALUE),
 							name:			"",
 							type:			TYPE_XMLVALUE,
-							value:			node,
+							value:			printObject(node, TYPE_XMLVALUE),
 							target:			target,
 							access:			ACCESS_VARIABLE,
 							permission:		PERMISSION_READWRITE
@@ -1368,6 +1372,14 @@ package nl.demonsters.debugger
 		public function htmlEscape(s:String):String
 		{
 			if (s) {
+				// Remove single quotes
+				while(s.indexOf("\'") != -1) {
+					s = s.replace("\'", "&apos;");
+				}
+				// Remove double quotes
+				while(s.indexOf("\"") != -1) {
+					s = s.replace("\"", "&quot;");
+				}
 				return XML(new XMLNode(XMLNodeType.TEXT_NODE, s)).toXMLString();
 			} else {
 				return "";

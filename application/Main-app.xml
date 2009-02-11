@@ -4,8 +4,8 @@
 	<id>nl.demonsters.debugger</id>
 	<filename>De MonsterDebugger</filename>
 	<name>De MonsterDebugger</name>
-	<version>2.0</version>
-	<description>Debugger for Adobe Flash, Flex and AIR projects</description>
+	<version>2.01</version>
+	<description>Open source debugger for Adobe Flash, Flex and AIR projects</description>
 	<copyright>Copyright 2009, De Monsters</copyright>
 	
 	<initialWindow>
@@ -19,7 +19,7 @@
 		<resizable>true</resizable>
 		<width>1200</width>
 		<height>800</height>
-		<minSize>800 600</minSize>
+		<minSize>800 300</minSize>
 	</initialWindow>
 	
 	<icon>

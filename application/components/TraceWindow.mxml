@@ -45,12 +45,20 @@
 			 */ 
 			public function setData(item:Object):void
 			{
+				// Uncompress the item data
+				var bytes:ByteArray = item.bytes;
+				bytes.uncompress();
+				
 				// Save the item
 				_line 		= item.line;
 				_time 		= item.time;
 				_target 	= item.target;
 				_message 	= item.message;
-				_xml 		= item.xml;
+				_xml 		= bytes.readObject();
+				
+				// Clear the bytes
+				bytes.clear();
+				bytes = null;
 			}
 			
 			
@@ -67,7 +75,7 @@
 				if (_xml.node.children().length() == 0)
 				{
 					// Set the textfield
-					textArea.text = unescape(_xml.node.@label);
+					textArea.text = htmlUnescape(_xml.node.@label);
 					textArea.visible = true;
 				}
 				else
@@ -80,6 +88,33 @@
 				}
 			}
 			
+			
+			/**
+			 * Converts regular characters to HTML characters
+			 * @param s: The string to convert
+			 */
+			public function htmlEscape(s:String):String
+			{
+				if (s) {
+			  		return XML(new XMLNode(XMLNodeType.TEXT_NODE, s)).toXMLString();
+				} else {
+					return "";
+				}
+			}
+				
+			
+			/**
+			 * Converts HTML characters to regular characters
+			 * @param s: The string to convert
+			 */
+			public function htmlUnescape(s:String):String
+			{
+				if (s) {
+			    	return new XMLDocument(s).firstChild.nodeValue;
+				} else {
+					return "";
+				}
+			}
 		]]>	
 	</mx:Script>
 	
