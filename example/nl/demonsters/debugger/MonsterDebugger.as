@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen
  * @company 	De Monsters
  * @link 		http://www.deMonsterDebugger.com
- * @version 	2.01
+ * @version 	2.02
  * 
  * 
  * 
@@ -50,9 +50,6 @@ package nl.demonsters.debugger
 	import flash.geom.Rectangle;
 	import flash.utils.ByteArray;
 	import flash.utils.describeType;
-	import flash.xml.XMLDocument;
-	import flash.xml.XMLNodeType;
-	import flash.xml.XMLNode;
 	
 	
 	public class MonsterDebugger
@@ -82,7 +79,7 @@ package nl.demonsters.debugger
 		public static const COLOR_ERROR			:uint = 0xFF0000;
 		public static const COLOR_WARNING		:uint = 0xFF3300;
 		
-		
+
 		// Commands
 		private const COMMAND_HELLO				:String = "HELLO";
 		private const COMMAND_ROOT				:String = "ROOT";
@@ -94,6 +91,7 @@ package nl.demonsters.debugger
 		private const COMMAND_CALL_METHOD		:String = "CALL_METHOD";
 		private const COMMAND_SHOW_HIGHLIGHT	:String = "SHOW_HIGHLIGHT";
 		private const COMMAND_HIDE_HIGHLIGHT	:String = "HIDE_HIGHLIGHT";
+		private const COMMAND_CLEAR_TRACES		:String = "CLEAR_TRACES";
 		private const COMMAND_NOTFOUND			:String = "NOTFOUND";
 		
 		
@@ -103,6 +101,7 @@ package nl.demonsters.debugger
 		private const TYPE_BOOLEAN				:String = "Boolean";
 		private const TYPE_NUMBER				:String = "Number";
 		private const TYPE_OBJECT				:String = "Object";
+		private const TYPE_VECTOR				:String = "Vector";
 		private const TYPE_STRING				:String = "String";
 		private const TYPE_INT					:String = "int";
 		private const TYPE_UINT					:String = "uint";
@@ -154,7 +153,7 @@ package nl.demonsters.debugger
 		
 		
 		// Version
-		private const VERSION:Number = 2.01;
+		private const VERSION:Number = 2.02;
 		
 		
 		// The root of the application
@@ -166,7 +165,8 @@ package nl.demonsters.debugger
 		
 		
 		// Enabled / disabled
-		public var enabled:Boolean = true;
+		public var _enabled:Boolean = true;
+		
 		
 		
 		/**
@@ -206,7 +206,7 @@ package nl.demonsters.debugger
 			
 			// Save the root
 			// Send the first message
-			if (target != MonsterDebugger.trace) {
+			if (target != MonsterDebugger.singletonCheck) {
 				instance.root = target;
 				instance.send({text:COMMAND_HELLO, version:VERSION});
 			}
@@ -283,7 +283,7 @@ package nl.demonsters.debugger
 							try {
 								object[command["name"]] = command["value"];
 								send({text:COMMAND_SET_PROPERTY, value:object[command["name"]]});
-							} catch (error:Error) {
+							} catch (error1:Error) {
 								send({text:COMMAND_NOTFOUND, target:command["target"]});
 								break;
 							}
@@ -295,7 +295,7 @@ package nl.demonsters.debugger
 						method = getObject(command["target"], 0);
 						if (method != null) {
 							if (command["returnType"] == TYPE_VOID) {
-								method.apply(this, command["arguments"])
+								method.apply(this, command["arguments"]);
 							} else {
 								object = method.apply(this, command["arguments"]);
 								xml = XML(parseObject(object, "", false, 1, 4));
@@ -310,13 +310,13 @@ package nl.demonsters.debugger
 							try {
 								highlight.parent.removeChild(highlight);
 								highlight = null;
-							} catch(error1:Error) {
+							} catch(error2:Error) {
 								//
 							}
 						}
 						object = getObject(command["target"], 0);
-						if (isDisplayObject(object) && isDisplayObject(object.parent)) {
-							var bounds:Rectangle = object.getBounds(object.parent);			
+						if (isDisplayObject(object) && isDisplayObject(object["parent"])) {
+							var bounds:Rectangle = object.getBounds(object["parent"]);			
 							highlight = new Sprite();
 							highlight.x = 0;
 							highlight.y = 0;
@@ -327,8 +327,8 @@ package nl.demonsters.debugger
 							highlight.mouseChildren = false;
 							highlight.mouseEnabled = false;
 							try {
-								object.parent.addChild(highlight);
-							} catch(error2:Error) {
+								object["parent"].addChild(highlight);
+							} catch(error3:Error) {
 								highlight = null;
 							}
 						}
@@ -340,7 +340,7 @@ package nl.demonsters.debugger
 							try {
 								highlight.parent.removeChild(highlight);
 								highlight = null;
-							} catch(error:Error) {
+							} catch(error4:Error) {
 								//
 							}
 						}
@@ -387,7 +387,7 @@ package nl.demonsters.debugger
 						// Set the length to read
 						var length:int = bytesAvailable;
 						if (length > MAX_PACKAGE_BYTES) {
-							length = MAX_PACKAGE_BYTES
+							length = MAX_PACKAGE_BYTES;
 						}
 						
 						// Read a chunk of data
@@ -430,8 +430,8 @@ package nl.demonsters.debugger
 		 */
 		public static function trace(target:Object, object:*, color:uint = 0x111111, functions:Boolean = false, depth:int = 4):void
 		{
-			if (instance == null) instance = new MonsterDebugger(trace);
-			if (instance.enabled) instance.trace(target, object, color, functions, depth);
+			if (instance == null) instance = new MonsterDebugger(MonsterDebugger.singletonCheck);
+			if (MonsterDebugger.enabled) instance.traceInternal(target, object, color, functions, depth);
 		}
 		
 		
@@ -443,7 +443,7 @@ package nl.demonsters.debugger
 		 * @parem functions: Include or exclude the functions
 		 * @param depth: The maximum depth of the trace
 		 */
-		private function trace(target:Object, object:*, color:uint = 0x111111, functions:Boolean = false, depth:int = 4):void
+		private function traceInternal(target:Object, object:*, color:uint = 0x111111, functions:Boolean = false, depth:int = 4):void
 		{
 			if (enabled)
 			{
@@ -452,6 +452,31 @@ package nl.demonsters.debugger
 				
 				//Create a send object
 				send({text:COMMAND_TRACE, date:new Date(), target:String(target), xml:xml, color:color});
+			}
+		}
+		
+		
+		/**
+		 * Static clear traces function
+		 * This clears the traces in the application
+		 */
+		public static function clearTraces():void
+		{
+			if (instance == null) instance = new MonsterDebugger(MonsterDebugger.singletonCheck);
+			if (MonsterDebugger.enabled) instance.clearTracesInternal();
+		}
+		
+		
+		/**
+		 * Private clear traces function
+		 * This clears the traces in the application
+		 */
+		private function clearTracesInternal():void
+		{
+			if (enabled)
+			{
+				//Create a send object
+				send({text:COMMAND_CLEAR_TRACES});
 			}
 		}
 		
@@ -553,8 +578,8 @@ package nl.demonsters.debugger
 				var childTarget:String = "";
 				var methods:XMLList = description..method;
 				var methodsArr:Array = new Array();
-				var returnType:String
-				var parameters:XMLList
+				var returnType:String;
+				var parameters:XMLList;
 				var args:Array;
 				var argsString:String;
 				var optional:Boolean = false;
@@ -592,7 +617,7 @@ package nl.demonsters.debugger
 					
 					// Save the function info
 					// Parameters, arguments, return type, etc
-					returnType = parseType(methodsArr[i].xml.@returnType)
+					returnType = parseType(methodsArr[i].xml.@returnType);
 					parameters = methodsArr[i].xml..parameter;
 					args = new Array();
 					argsString = "";
@@ -678,7 +703,7 @@ package nl.demonsters.debugger
 		 * @param currentDepth: The current trace depth
 		 * @param maxDepth:: The maximum trace depth
 		 */
-		private function parseObject(object:*, target:String = "", functions:Boolean = false, currentDepth:int = 1, maxDepth:int = -1):String
+		private function parseObject(object:*, target:String = "", functions:Boolean = false, currentDepth:int = 1, maxDepth:int = 4):String
 		{
 			// Variables needed in the loops
 			var xml:String = "";
@@ -705,9 +730,9 @@ package nl.demonsters.debugger
 					base = parseType(description.@base);
 					
 					
-					/**************************************************
+					/**
 					 * FUNCTION
-					 **************************************************/
+					 */
 					if (functions && base == TYPE_FUNCTION)
 					{
 						// Trace an empty function
@@ -724,10 +749,10 @@ package nl.demonsters.debugger
 					}
 					
 					
-					/**************************************************
-					 * ARRAY
-					 **************************************************/
-					else if (type == TYPE_ARRAY)
+					/**
+					 * ARRAY, VECTOR
+					 */
+					else if (type == TYPE_ARRAY || type == TYPE_VECTOR)
 					{
 						// Add data description if needed
 						if (currentDepth == 1) xml += createNode("node", {icon:ICON_ROOT, label:"(" + type + ")", target:target});
@@ -736,17 +761,17 @@ package nl.demonsters.debugger
 						// The only property of the array
 						xml += createNode("node", {
 							icon:			ICON_VARIABLE,
-							label:			"length" + " (" + TYPE_UINT + ") = " + object.length,
+							label:			"length" + " (" + TYPE_UINT + ") = " + object["length"],
 							name:			"length",
 							type:			TYPE_UINT, 
-							value:			object.length, 
+							value:			object["length"], 
 							target:			target + "." + "length",
 							access:			ACCESS_VARIABLE,
 							permission:		PERMISSION_READONLY
 						}, true);
 						
 						// Loop through the array
-						for (i = 0; i < object.length; i++)
+						for (i = 0; i < object["length"]; i++)
 						{
 							// Save the type
 							childType = parseType(describeType(object[i]).@name);
@@ -768,7 +793,7 @@ package nl.demonsters.debugger
 										permission:		PERMISSION_READWRITE
 									}, true);
 								}
-								catch(error:Error)
+								catch(error1:Error)
 								{
 									// Do nothing
 								}
@@ -790,7 +815,7 @@ package nl.demonsters.debugger
 									// Try to parse the object
 									xml += parseObject(object[i], childTarget, functions, currentDepth + 1, maxDepth);
 								} 
-								catch(error:Error)
+								catch(error2:Error)
 								{
 									// If this fails add a warning message for the user
 									xml += createNode("node", {icon:ICON_WARNING, type:TYPE_WARNING, label:"Unreadable", name:"Unreadable"}, true);
@@ -804,9 +829,9 @@ package nl.demonsters.debugger
 					}
 					
 					
-					/**************************************************
+					/**
 					 * OBJECT
-					 **************************************************/
+					 */
 					else if (type == TYPE_OBJECT)
 					{
 						// Add data description if needed
@@ -842,7 +867,7 @@ package nl.demonsters.debugger
 										permission:		PERMISSION_READWRITE
 									}, true);
 								}
-								catch(error:Error)
+								catch(error3:Error)
 								{
 									// Do nothing
 								}
@@ -864,7 +889,7 @@ package nl.demonsters.debugger
 									// Try to parse the object
 									xml += parseObject(object[properties[i]], childTarget, functions, currentDepth + 1, maxDepth);
 								} 
-								catch(error:Error)
+								catch(error4:Error)
 								{
 									// If this fails add a warning message for the user
 									xml += createNode("node", {icon:ICON_WARNING, type:TYPE_WARNING, label:"Unreadable", name:"Unreadable"}, true);
@@ -878,11 +903,11 @@ package nl.demonsters.debugger
 					}
 					
 					
-					/**************************************************
+					/**
 					 * XML
-					 **************************************************/
-					else if (type == TYPE_XML || type == TYPE_XMLLIST)
-					{
+					 */
+					else if (type == TYPE_XML)
+					{						
 						// Add data description if needed
 						if (currentDepth == 1) xml += createNode("node", {icon:ICON_ROOT, label:"(" + type + ")", target:target});
 						
@@ -892,11 +917,43 @@ package nl.demonsters.debugger
 						// Close data description if needed
 						if (currentDepth == 1) xml += createNode("/node");
 					}
+										
 					
-					
-					/**************************************************
+					/**
+					 * XML List
+					 */
+					else if (type == TYPE_XMLLIST)
+					{						
+						// Add data description if needed
+						if (currentDepth == 1) xml += createNode("node", {icon:ICON_ROOT, label:"(" + type + ")", target:target});
+						
+						// Create the length property
+						// The only property of the array
+						xml += createNode("node", {
+							icon:			ICON_VARIABLE,
+							label:			"length" + " (" + TYPE_UINT + ") = " + object.length(),
+							name:			"length",
+							type:			TYPE_UINT, 
+							value:			object.length(), 
+							target:			target + "." + "length",
+							access:			ACCESS_VARIABLE,
+							permission:		PERMISSION_READONLY
+						}, true);
+						
+						// Loop through the xml nodes
+						for (i = 0; i < object.length(); i++)
+						{							
+							xml += parseXML(object[i], target + "." + String(i) + ".children()", currentDepth, maxDepth);
+						}
+						
+						// Close data description if needed
+						if (currentDepth == 1) xml += createNode("/node");
+					}								
+								
+								
+					/**
 					 * STRING, NUMBER, BOOLEAN, INT, UINT
-					 **************************************************/
+					 */
 					else if (type == TYPE_STRING || type == TYPE_BOOLEAN || type == TYPE_NUMBER || type == TYPE_INT || type == TYPE_UINT)
 					{
 						// Create the node
@@ -913,17 +970,17 @@ package nl.demonsters.debugger
 					}
 					
 					
-					/**************************************************
+					/**
 					 * CUSTOM CLASS
-					 **************************************************/
+					 */
 					else
 					{
 						// Add data description if needed
 						if (currentDepth == 1) xml += createNode("node", {icon:ICON_ROOT, label:"(" + type + ")", target:target});
 						
 						// Get the data
-						var variables:XMLList = description..variable
-						var accessors:XMLList = description..accessor
+						var variables:XMLList = description..variable;
+						var accessors:XMLList = description..accessor;
 						var constants:XMLList = description..constant;
 						var methods:XMLList = description..method;
 						var variablesArr:Array = new Array();
@@ -993,9 +1050,9 @@ package nl.demonsters.debugger
 						methodsArr.sortOn("name");
 						
 						
-						/**************************************************
+						/**
 						 * VARIABLES
-						 **************************************************/
+						 */
 						for (i = 0; i < variablesArr.length; i++)
 						{
 							// Save the type
@@ -1043,7 +1100,7 @@ package nl.demonsters.debugger
 											permission:		permission
 										}, true);
 									}
-									catch(error:Error)
+									catch(error5:Error)
 									{
 										// Do nothing
 									}
@@ -1064,7 +1121,7 @@ package nl.demonsters.debugger
 										// Try to parse the object
 										xml += parseObject(object[childName], childTarget, functions, currentDepth + 1, maxDepth);
 									} 
-									catch(error:Error)
+									catch(error6:Error)
 									{
 										// If this fails add a warning message for the user
 										xml += createNode("node", {icon:ICON_WARNING, type:TYPE_WARNING, label:"Unreadable", name:"Unreadable"}, true);
@@ -1075,9 +1132,9 @@ package nl.demonsters.debugger
 						}
 						
 						
-						/**************************************************
+						/**
 						 * METHODS
-						 **************************************************/
+						 */
 						if (functions)
 						{
 							for (i = 0; i < methodsArr.length; i++)
@@ -1088,7 +1145,7 @@ package nl.demonsters.debugger
 								childTarget = target + "." + childName;
 								
 								// Save the parameters
-								var returnType:String = parseType(methodsArr[i].xml.@returnType)
+								var returnType:String = parseType(methodsArr[i].xml.@returnType);
 								var parameters:XMLList = methodsArr[i].xml..parameter;
 								var args:Array = new Array();
 								
@@ -1115,7 +1172,7 @@ package nl.demonsters.debugger
 						if (currentDepth == 1) xml += createNode("/node");
 					}
 				} 
-				catch (error:Error)
+				catch (error7:Error)
 				{
 					// The object is not found
 					var msg:String = "";
@@ -1149,7 +1206,7 @@ package nl.demonsters.debugger
 			
 			// Check if the maximum trace depth is reached
 			if (maxDepth == -1 || currentDepth <= maxDepth)
-			{
+			{				
 				// Check if the user traced an attribute
 				if (target.indexOf("@") != -1)
 				{
@@ -1180,7 +1237,7 @@ package nl.demonsters.debugger
 					}, true);
 				}
 				else if (node.hasSimpleContent())
-				{
+				{					
 					// Node with one text value and possible attributes
 					xml += createNode("node", {
 						icon:			ICON_XMLNODE,
@@ -1288,15 +1345,17 @@ package nl.demonsters.debugger
 				s = type.substring(type.lastIndexOf("::") + 2, type.length);
 			}
 			
+			// Remove the items after the .
+			// Vector.<String> becomes Vector
+			if (s.lastIndexOf(".") != -1) {
+				s = s.substring(0, s.lastIndexOf("."));
+			}
+			
 			// Change "MethodClosure" to "Function"
-			// This is better for the user
+			// This is better for the user interface
 			if (s == TYPE_METHOD) {
 				s = TYPE_FUNCTION;
 			}
-			
-			// Replace "<>" for "<vector>"
-			// s = s.replace("<", "");
-			// s = s.replace(">", "");
 			
 			// Return the value
 			return htmlEscape(s);
@@ -1326,9 +1385,9 @@ package nl.demonsters.debugger
 			
 			// Close the node
 			if (close) {
-				xml += "></" + title + ">"
+				xml += "></" + title + ">";
 			} else {
-				xml += ">"
+				xml += ">";
 			}
 			
 			// Return the node
@@ -1352,7 +1411,7 @@ package nl.demonsters.debugger
 			{
 				// We dont want to send the complete byte array
 				// Only display the number of bytes
-				s = object.length + " bytes";
+				s = object["length"] + " bytes";
 			}
 			else
 			{
@@ -1380,7 +1439,8 @@ package nl.demonsters.debugger
 				while(s.indexOf("\"") != -1) {
 					s = s.replace("\"", "&quot;");
 				}
-				return XML(new XMLNode(XMLNodeType.TEXT_NODE, s)).toXMLString();
+                var xml:XML = <a>{s}</a>;
+                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)/g, "");
 			} else {
 				return "";
 			}
@@ -1394,7 +1454,9 @@ package nl.demonsters.debugger
 		public function htmlUnescape(s:String):String
 		{
 			if (s) {
-				return new XMLDocument(s).firstChild.nodeValue;
+				var xml:XML = <a/>;
+                xml.replace(0, s);
+                return String(xml);
 			} else {
 				return "";
 			}
@@ -1407,13 +1469,20 @@ package nl.demonsters.debugger
 		public static function get enabled():Boolean
 		{
 			if (instance == null) instance = new MonsterDebugger(null);
-			return instance.enabled;
+			return instance._enabled;
 		}
 		public static function set enabled(value:Boolean):void
 		{
 			if (instance == null) instance = new MonsterDebugger(null);
-			instance.enabled = value;
+			instance._enabled = value;
 		}
+		
+		
+		/**
+		 * This function is used for the singleton check in the constructor
+		 * and is given as an argument in the trace and clearTrace function
+		 */
+		private static function singletonCheck():void{}
 		
 		
 		/**

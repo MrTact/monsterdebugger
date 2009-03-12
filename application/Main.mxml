@@ -17,14 +17,14 @@
 	used to debug unpublished Flash, AIR of FLEX applications in
 	the environment that they will be used in as a final product. 
 	Please make sure that you do not send any debug material to
-	the debugger from a live running application.  
+	the debugger from a live running application.
 	
 	Use at your own risk.
 	
 	@author		Ferdi Koomen
 	@company	De Monsters
 	@link 		http://www.deMonsterDebugger.com
-	@version 	2.01
+	@version 	2.02
 	
 	
 	
@@ -53,8 +53,7 @@
 	
 	<mx:Script>
 		<![CDATA[
-			
-			
+		
 			// Import classes
 			import com.adobe.utils.StringUtil;
 			import air.update.ApplicationUpdaterUI;
@@ -177,6 +176,7 @@
 			private const COMMAND_CALL_METHOD		:String = "CALL_METHOD";
 			private const COMMAND_SHOW_HIGHLIGHT	:String = "SHOW_HIGHLIGHT";
 			private const COMMAND_HIDE_HIGHLIGHT	:String = "HIDE_HIGHLIGHT";
+			private const COMMAND_CLEAR_TRACES		:String = "CLEAR_TRACES";
 			private const COMMAND_NOTFOUND			:String = "NOTFOUND";
 			
 			
@@ -186,7 +186,7 @@
 			
 			
 			// Current version
-			private const VERSION:String = "2.01";
+			private const VERSION:String = "2.02";
 			
 			
 			// The current selected tree item target
@@ -209,10 +209,6 @@
 			private var bufferPackage:ByteArray = new ByteArray();
 			
 			
-			// Error message for old client
-			private var versionError:Object = null;
-			
-	        
 			// Zip file
 			private var zip:FZip;
 			private var zipIndex:Number;
@@ -389,9 +385,9 @@
 					bufferPackage = new ByteArray();
 					bufferPackage.bytesAvailable
 					bufferPackage.writeBytes(data.bytes, 0, data.bytes.bytesAvailable);
-				} 
+				}
 				else 
-				{					
+				{			
 					// No, we're already busy with a package
 					// Just write the bytes in that package	
 					bufferPackage.writeBytes(data.bytes, 0, data.bytes.bytesAvailable);
@@ -465,19 +461,22 @@
 							var clientVersion:Number = Number(command.version);
 							var appVersion:Number = Number(VERSION);
 							if (clientVersion < appVersion) {
-								versionError = {
-									line:		"", 
-									time:		"", 
+								var versionError:Object = {
+									line:		"-", 
+									time:		"-", 
 									target:		"De MonsterDebugger", 
 									color:		0xCC0000,
-									message: 	"Please update your client class to version " + clientVersion +". Double click here to export the class.", 
+									message: 	"Please update your client class to version " + appVersion +". Double click here to export the class.", 
 									xml: 		null
 								};
+								tracesAll.addItem(versionError);
 								tracesFiltered.addItem(versionError);
 							}
-		       				target = null;
+		       				selectedTarget = null;
 		       				appAll.source = null;
 		       				appFiltered.source = null;
+		       				if (propertiesGrid) propertiesGrid.destroyItemEditor();
+							if (functionsGrid) functionsGrid.destroyItemEditor();
 		       				properties.removeAll();
 		       				functions.removeAll();
 							send({text:COMMAND_ROOT, functions:false});
@@ -486,11 +485,13 @@
 						
 						// Received the base of the app
 						case COMMAND_ROOT:
-		       				target = null;
+		       				selectedTarget = null;
 		       				appAll.source = command.xml.children(); 
 		       				appFiltered.source = command.xml.children();
 		       				tree.openItems = command.xml.children();
 		       				filterApplication();
+							if (propertiesGrid) propertiesGrid.destroyItemEditor();
+							if (functionsGrid) functionsGrid.destroyItemEditor();
 		       				properties.removeAll();
 		       				functions.removeAll();
 						break;
@@ -643,12 +644,6 @@
 								message = stripBreaks(htmlUnescape(command.xml.children()[0].@label)) + " ...";
 							}
 							
-							// Compress the xml
-							// This will save memory
-							var bytes:ByteArray = new ByteArray();
-							bytes.writeObject(command.xml);
-							bytes.compress();
-							
 							// Save the item
 							var item:Object = {
 								line:		tracesAll.length + 1, 
@@ -656,7 +651,7 @@
 								target:		command.target, 
 								color:		command.color,
 								message: 	message, 
-								bytes: 		bytes
+								xml: 		command.xml
 							};
 							
 							// Add the item to the array
@@ -672,11 +667,6 @@
 								if (searchString != "") {
 									searchTerms.push(searchString);
 								}
-							}
-							
-							// Check if we should add the version alert
-							if (versionError != null) {
-								tracesFiltered.addItem(versionError);
 							}
 							
 							// Check if a filter term is given
@@ -703,6 +693,12 @@
 							// Clear the item
 							item = null;				
 							
+						break;
+						
+						
+						// Received a clear traces
+						case COMMAND_CLEAR_TRACES:
+							clearTraces();
 						break;
 					}
 				}
@@ -755,11 +751,6 @@
 						searchTerms.push(searchString);
 					}
 				}
-				
-				// Check if we should add the version alert
-				if (versionError != null) {
-					tracesFiltered.addItem(versionError);
-				}
 						
 				// Check if a filter term is given
 				if (searchTerms.join("") == "")
@@ -800,6 +791,10 @@
 			 */
 			private function refreshInspector():void
 			{
+				// We might want to add the following line
+				// if (tree.selectedIndex != -1) { Do something }
+				if (propertiesGrid) propertiesGrid.destroyItemEditor();
+				if (functionsGrid) functionsGrid.destroyItemEditor();
    				properties.removeAll();
    				functions.removeAll();
    				if (selectedTarget != null) {
@@ -829,6 +824,8 @@
 					
 					// Clear the data
 					selectedTarget = null;
+					if (propertiesGrid) propertiesGrid.destroyItemEditor();
+					if (functionsGrid) functionsGrid.destroyItemEditor();
 	   				properties.removeAll();
 	   				functions.removeAll();	
 	   				
@@ -1060,6 +1057,24 @@
 			
 			
 			/**
+			 * The inspctor tab is clicked
+			 */	
+			public function inspectorSwitch():void
+			{
+				if (viewstack.selectedChild == propertiesCanvas)
+				{
+					applicationMenu.menu[1].menuitem[3].@toggled = true;
+					applicationMenu.menu[1].menuitem[4].@toggled = false;
+				}
+				else if (viewstack.selectedChild == functionsCanvas)
+				{
+					applicationMenu.menu[1].menuitem[3].@toggled = false;
+					applicationMenu.menu[1].menuitem[4].@toggled = true;
+				}
+			}
+			
+					
+			/**
 			 * A numeric stepper has been clicked on the property editor
 			 * @param event: Basic event
 			 * @param type: Object type
@@ -1276,6 +1291,11 @@
 					// The path is a file
 					var file:File = new File(zipExpandPath + "/" + path);
 					
+					// Check if we should remove the file first
+					if (file.exists) {
+						file.deleteFile();
+					}
+					
 					// Create a stream and write the file
 					var stream:FileStream = new FileStream();
 					stream.open(file, FileMode.WRITE);
@@ -1452,6 +1472,11 @@
 					dontShowProperties = !dontShowProperties;
 					applicationMenu.menu[1].menuitem[6].@toggled = dontShowProperties;
 					filterApplication();
+					if (propertiesGrid) propertiesGrid.destroyItemEditor();
+					if (functionsGrid) functionsGrid.destroyItemEditor();
+	   				properties.removeAll();
+	   				functions.removeAll();
+	   				selectedTarget = null;
 					break;
 					
 					case "refreshInspector":
@@ -1728,7 +1753,16 @@
 			public function htmlEscape(s:String):String
 			{
 				if (s) {
-			  		return XML(new XMLNode(XMLNodeType.TEXT_NODE, s)).toXMLString();
+					// Remove single quotes
+					while(s.indexOf("\'") != -1) {
+						s = s.replace("\'", "&apos;");
+					}
+					// Remove double quotes
+					while(s.indexOf("\"") != -1) {
+						s = s.replace("\"", "&quot;");
+					}
+	                var xml:XML = <a>{s}</a>;
+	                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)/g, "");
 				} else {
 					return "";
 				}
@@ -1742,7 +1776,9 @@
 			public function htmlUnescape(s:String):String
 			{
 				if (s) {
-			    	return new XMLDocument(s).firstChild.nodeValue;
+					var xml:XML = <a/>;
+					xml.replace(0, s);
+					return String(xml);
 				} else {
 					return "";
 				}
@@ -1835,7 +1871,7 @@
 						<mx:Panel width="100%" height="100%"/>
 						<mx:Label text="INSPECTOR" fontWeight="bold" fontSize="11" x="10" y="8"/>
 						<mx:Image y="32" source="skin/assets/TabBar-background.png" left="5" right="5" scaleContent="false" height="18"/>
-						<mx:TabBar dataProvider="{viewstack}" x="5" y="32" height="18" toolTip=""/>
+						<mx:TabBar dataProvider="{viewstack}" itemClick="inspectorSwitch()" x="5" y="32" height="18" toolTip=""/>
 						<mx:ViewStack id="viewstack" left="5" top="50" right="5" bottom="5">
 							<mx:Canvas id="propertiesCanvas" label="PROPERTIES" width="100%" height="100%">
 								<mx:DataGrid id="propertiesGrid" dataProvider="{properties}" editable="true" left="0" top="0" right="0" bottom="0">
@@ -1924,7 +1960,7 @@
 			</mx:Canvas>
 		</mx:VDividedBox>
 		<mx:Canvas id="advertisement" width="100%" height="26" backgroundAlpha="1" backgroundColor="#666666" buttonMode="true" useHandCursor="true" rollOver="advertisementRollOver()" rollOut="advertisementRollOut()" click="advertisementClick(event)">
-			<mx:Label id="advertisementLabel" y="4" mouseEnabled="false" mouseChildren="false" text="22-01-2009 - First private beta of the new MonsterDebugger ready!" left="10" right="50" color="#CCCCCC" fontWeight="normal"/>
+			<mx:Label id="advertisementLabel" y="4" mouseEnabled="false" mouseChildren="false" left="10" right="50" color="#CCCCCC" fontWeight="normal"/>
 		</mx:Canvas>
 	</mx:VBox>
 	<mx:Canvas id="errorCanvas" width="100%" height="100%" backgroundAlpha="0.7" backgroundColor="#000000" visible="false">

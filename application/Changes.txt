@@ -12,6 +12,15 @@ Version 2.01
 - Fixed a bug tracing strings with single quotes
 - Fixed a bug tracing XML with CDATA tags
 
+Version 2.02
+- Optimised functions names for FDT and Flex SDK 3.3
+- Optimised the class for FDT and Flex SDK 3.3
+- Optimised the HTML escape / unescape function
+- Removed some type casting warnings
+- Added an Flash CS3 example file
+- Added support for Vector
+
+
 
 
 ########################
@@ -30,3 +39,15 @@ Version 2.01
 - Optimized some memory related issues
 - Added the option to keep the window on top
 - Fixed a CPU bug in the scrollbar from the help file
+
+Version 2.02
+- Fixed a bug with the update client class error
+- Fixed a bug with opening the trace window
+- Fixed a menu bug with switching tabs
+- Fixed a refresh bug with the "Don't Show Single Properties" option
+- Fixes a refresh bug with the live application
+- Optimised the HTML escape / unescape function
+- Signed AIR application
+
+
+

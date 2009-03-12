@@ -37,7 +37,7 @@
 			private var _target:String = "";
 			private var _message:String = "";
 			private var _xml:XML = new XML();
-						
+				
 			
 			/**
 			 * Set the data in the trace window
@@ -45,20 +45,12 @@
 			 */ 
 			public function setData(item:Object):void
 			{
-				// Uncompress the item data
-				var bytes:ByteArray = item.bytes;
-				bytes.uncompress();
-				
 				// Save the item
 				_line 		= item.line;
 				_time 		= item.time;
 				_target 	= item.target;
 				_message 	= item.message;
-				_xml 		= bytes.readObject();
-				
-				// Clear the bytes
-				bytes.clear();
-				bytes = null;
+				_xml 		= item.xml;
 			}
 			
 			
@@ -96,7 +88,16 @@
 			public function htmlEscape(s:String):String
 			{
 				if (s) {
-			  		return XML(new XMLNode(XMLNodeType.TEXT_NODE, s)).toXMLString();
+					// Remove single quotes
+					while(s.indexOf("\'") != -1) {
+						s = s.replace("\'", "&apos;");
+					}
+					// Remove double quotes
+					while(s.indexOf("\"") != -1) {
+						s = s.replace("\"", "&quot;");
+					}
+	                var xml:XML = <a>{s}</a>;
+	                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)/g, "");
 				} else {
 					return "";
 				}
@@ -110,11 +111,15 @@
 			public function htmlUnescape(s:String):String
 			{
 				if (s) {
-			    	return new XMLDocument(s).firstChild.nodeValue;
+					var xml:XML = <a/>;
+					xml.replace(0, s);
+					return String(xml);
 				} else {
 					return "";
 				}
 			}
+			
+			
 		]]>	
 	</mx:Script>
 	
