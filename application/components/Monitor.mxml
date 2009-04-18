@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" backgroundColor="#333333" backgroundAlpha="1" initialize="init()" resize="resizeHandler()">
+
+	<mx:Script>
+		<![CDATA[
+			
+			// Data holders
+			private var values:Array = new Array();
+			private var spriteFPS:Sprite = new Sprite();
+			private var spriteMEM:Sprite = new Sprite();
+			private var spritePoint:Sprite = new Sprite();
+			
+			// Offset en time / pixel ratio			
+			private const RATIO:int = 100;
+			private const LEFT:int = 120;
+			
+			// Marker timestamps
+			private var timestamp:Number;
+			private var timestampMin:Number;
+			private var timestampMax:Number;
+			
+			
+			public function addData(date:Date, time:uint, fps:uint, memory:uint):void
+			{
+				var item:Object = {
+					date:	date,
+					time:	time,
+					fps:	fps,
+					memory:	memory
+				}
+				
+				// Save the data
+				values.push(item);
+				
+				// Update the textFields
+				monitorFPS.text = "FPS: " + fps.toFixed(2);
+				monitorMEM.text = "MEM: " + (memory / 1024 / 1024 ).toFixed(2) +  "Mb";
+				
+				// Check for max
+				// 2000 pixels / 5 pro step = 400 positions max
+				if (values.length > 400) {
+					values.shift();
+				}
+				
+				// Update the lines
+				update();
+			}
+			
+			
+			public function reset():void
+			{
+				// Clear all values and lines
+				values = new Array();
+				spriteFPS.graphics.clear();
+				spriteMEM.graphics.clear();
+				spritePoint.graphics.clear();
+				monitorFPS.text = "FPS:";
+				monitorMEM.text = "MEM:";
+				timestampMin = 0;
+				timestampMax = 0;
+			}
+			
+			
+			public function setMarker(date:Date):void
+			{
+				timestamp = date.time;	
+				if (timestamp < timestampMin && timestamp > timestampMax) {
+					update();
+				}
+			}
+			
+			
+			public function clearMarker():void
+			{
+				timestamp = 0;
+				update();
+			}
+			
+
+			private function init():void
+			{
+				// Add the sprites to the stage
+				spritePoint.x = 0;
+				spriteMEM.x = 0;
+				spriteFPS.x = 0;
+				rawChildren.addChild(spritePoint);
+				rawChildren.addChild(spriteMEM);
+				rawChildren.addChild(spriteFPS);
+				// spriteMEM.filters = [new DropShadowFilter(0, 0, 0, 1, 6, 6)];
+				// spriteFPS.filters = [new DropShadowFilter(0, 0, 0, 1, 6, 6)];
+				reset();
+			}
+			
+			
+			private function update():void
+			{
+				if (values.length > 0)
+				{
+					// Set the max
+					var maxMEM:Number = 100 * 1024 * 1024;
+					var maxFPS:Number = 100;
+					var i:int = 0;
+					
+					// Get the max memory and frames pro second
+					for (i = 0; i < values.length; i++) {
+						if (values[i].memory > maxMEM) {
+							maxMEM = values[i].memory;
+						}
+						if (values[i].fps > maxFPS) {
+							maxFPS = values[i].fps;
+						}
+					}
+									
+					// Calculate the height ratio
+					var ratioFPS:Number = height / maxFPS;
+					var ratioMEM:Number = height / maxMEM;
+					
+					// Clear the lines
+					spriteFPS.graphics.clear();
+					spriteFPS.graphics.lineStyle(2, 0xFFFFFF, 1);
+					
+					// Clear the lines
+					spriteMEM.graphics.clear();
+					spriteMEM.graphics.lineStyle(2, 0xFFC000, 1);
+					
+					// Clear the lines
+					spritePoint.graphics.clear();
+					spritePoint.graphics.lineStyle(2, 0x666666, 1);
+					
+					// Get the begin time
+					var beginTime:Number = values[values.length - 1].time;
+					var beginFPS:Number = values[values.length - 1].fps;
+					var beginMEM:Number = values[values.length - 1].memory;
+					
+					// Varuables for the loop
+					var time:Number;
+					var fps:Number;		
+					var memory:Number;
+					var ratio:Number;				
+					var horizontal:int;
+					
+					// Set the init position
+					spriteFPS.graphics.moveTo(LEFT, Math.round(height - (beginFPS * ratioFPS)));
+					spriteMEM.graphics.moveTo(LEFT, Math.round(height - (beginMEM * ratioMEM)));
+					
+					// Save the timestamps
+					timestampMin = values[values.length - 1].date.time
+					
+					// Loop from the end to start
+					for (i = values.length - 1; i >= 0; i--)
+					{
+						// Save the values
+						time = beginTime - values[i].time;
+						fps = values[i].fps;
+						memory = values[i].memory;
+						timestampMax = values[i].date.time - 1000;
+						
+						// Calculate the horizontal position
+						horizontal = LEFT + Math.round(time / RATIO);
+						
+						// Draw the lines
+						if (horizontal <= width) {
+							spriteFPS.graphics.lineTo(horizontal, Math.round(height - (fps * ratioFPS)));
+							spriteMEM.graphics.lineTo(horizontal, Math.round(height - (memory * ratioMEM)));
+						} else {
+							break;
+						}
+					}
+					
+					// Check if the timestamp is in range
+					if (timestamp < timestampMin && timestamp > timestampMax)
+					{
+						// Calculate the position of the marker
+						ratio = (time / RATIO) / (timestampMax - timestampMin);
+						horizontal = LEFT + Math.round((timestamp - timestampMin) * ratio);
+						
+						// Draw the line
+						spritePoint.graphics.moveTo(horizontal, 2);
+						spritePoint.graphics.lineTo(horizontal, height - 2);
+					}
+					
+				}
+			}
+			
+			
+			private function resizeHandler():void
+			{
+				update();
+			}
+			
+		]]>
+	</mx:Script>
+	<mx:Canvas x="0" y="0" width="120" height="100%" backgroundAlpha="1" backgroundColor="#222222"/>
+	<mx:Label text="FPS:" id="monitorFPS" fontWeight="normal" x="8" y="10" fontSize="10" color="#FFFFFF"/>
+	<mx:Label text="MEM:" id="monitorMEM" fontWeight="normal" x="8" y="30" fontSize="10" color="#FFC000"/>
+</mx:Canvas>

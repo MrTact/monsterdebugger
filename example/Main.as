@@ -88,7 +88,7 @@
 				break;
 				
 				// Trace an class
-				case button5:
+				case button6:
 				MonsterDebugger.trace(this, exampleClass);
 				break;
 			}
@@ -113,14 +113,14 @@
 		{
 			removeEventListener(Event.ENTER_FRAME, move);
 		}
-		
+
 		
 		/**
 		 * Move the ball on the stage
 		 * @param event: Enter frame event
 		 */
 		private function move(event:Event):void
-		{
+		{			
 			ball.x -= 10;
 			ball.rotationX += 5;
 			ball.rotationY += 5;

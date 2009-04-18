@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen
  * @company 	De Monsters
  * @link 		http://www.deMonsterDebugger.com
- * @version 	2.02
+ * @version 	2.03
  * 
  * 
  * 
@@ -46,10 +46,15 @@ package nl.demonsters.debugger
 	import flash.events.AsyncErrorEvent;
 	import flash.events.SecurityErrorEvent;
 	import flash.events.StatusEvent;
+	import flash.events.TimerEvent;
+	import flash.events.Event;
 	import flash.net.LocalConnection;
 	import flash.geom.Rectangle;
 	import flash.utils.ByteArray;
+	import flash.utils.Timer;
+	import flash.utils.getTimer;
 	import flash.utils.describeType;
+	import flash.system.System;
 	
 	
 	public class MonsterDebugger
@@ -92,6 +97,7 @@ package nl.demonsters.debugger
 		private const COMMAND_SHOW_HIGHLIGHT	:String = "SHOW_HIGHLIGHT";
 		private const COMMAND_HIDE_HIGHLIGHT	:String = "HIDE_HIGHLIGHT";
 		private const COMMAND_CLEAR_TRACES		:String = "CLEAR_TRACES";
+		private const COMMAND_MONITOR			:String = "MONITOR";
 		private const COMMAND_NOTFOUND			:String = "NOTFOUND";
 		
 		
@@ -153,7 +159,7 @@ package nl.demonsters.debugger
 		
 		
 		// Version
-		private const VERSION:Number = 2.02;
+		private const VERSION:Number = 2.03;
 		
 		
 		// The root of the application
@@ -164,9 +170,15 @@ package nl.demonsters.debugger
 		private var highlight:Sprite = null;
 		
 		
+		// Timer for the monitor
+		private var monitor:Timer;
+		private var monitorTime:uint;
+		private var monitorFrames:uint;
+		private var monitorSprite:Sprite;
+		
+		
 		// Enabled / disabled
 		public var _enabled:Boolean = true;
-		
 		
 		
 		/**
@@ -195,6 +207,15 @@ package nl.demonsters.debugger
 				lineIn.addEventListener(StatusEvent.STATUS, statusHandler);
 				lineIn.allowDomain(ALLOWED_DOMAIN);
 				lineIn.client = this;
+				
+				// Setup the fps and memory listeners
+				monitorTime = getTimer();
+				monitorFrames = 0;
+				monitorSprite = new Sprite();
+				monitorSprite.addEventListener(Event.ENTER_FRAME, enterFrameHandler);
+				monitor = new Timer(500);
+				monitor.addEventListener(TimerEvent.TIMER, monitorHandler);
+				monitor.start();
 				
 				try {
 					lineIn.connect(LINE_IN);
@@ -713,6 +734,8 @@ package nl.demonsters.debugger
 			var description:XML = new XML();
 			var type:String = "";
 			var base:String = "";
+			var isXML:Boolean = false;
+			var isXMLString:XML;
 			var i:int = 0;
 			var n:int = 0;
 			
@@ -730,9 +753,6 @@ package nl.demonsters.debugger
 					base = parseType(description.@base);
 					
 					
-					/**
-					 * FUNCTION
-					 */
 					if (functions && base == TYPE_FUNCTION)
 					{
 						// Trace an empty function
@@ -749,9 +769,6 @@ package nl.demonsters.debugger
 					}
 					
 					
-					/**
-					 * ARRAY, VECTOR
-					 */
 					else if (type == TYPE_ARRAY || type == TYPE_VECTOR)
 					{
 						// Add data description if needed
@@ -780,23 +797,44 @@ package nl.demonsters.debugger
 							// Check if we can create a single string or a new node
 							if (childType == TYPE_STRING || childType == TYPE_BOOLEAN || childType == TYPE_NUMBER || childType == TYPE_INT || childType == TYPE_UINT || childType == TYPE_FUNCTION)
 							{
-								try
-								{
-									xml += createNode("node", {
-										icon:			ICON_VARIABLE,
-										label:			"[" + i + "] (" + childType + ") = " + printObject(object[i], childType), 
-										name:			"[" + i + "]",
-										type:			childType, 
-										value:			printObject(object[i], childType), 
-										target:			childTarget,
-										access:			ACCESS_VARIABLE,
-										permission:		PERMISSION_READWRITE
-									}, true);
+								isXML = false;
+								isXMLString = new XML();
+								
+								// Check if the string is a XML string
+								if (childType == TYPE_STRING) {
+									try {
+										isXMLString = new XML(object[i]);
+										if (!isXMLString.hasSimpleContent() && isXMLString.children().length() > 0) isXML = true;
+									} catch(error1:TypeError) {}
 								}
-								catch(error1:Error)
-								{
-									// Do nothing
-								}
+								
+								try {
+									if (!isXML) {
+										xml += createNode("node", {
+											icon:			ICON_VARIABLE,
+											label:			"[" + i + "] (" + childType + ") = " + printObject(object[i], childType), 
+											name:			"[" + i + "]",
+											type:			childType, 
+											value:			printObject(object[i], childType), 
+											target:			childTarget,
+											access:			ACCESS_VARIABLE,
+											permission:		PERMISSION_READWRITE
+										}, true);
+									} else {
+										xml += createNode("node", {
+											icon:			ICON_VARIABLE,
+											label:			"[" + i + "] (" + childType + ")", 
+											name:			"[" + i + "]",
+											type:			childType, 
+											value:			"", 
+											target:			childTarget,
+											access:			ACCESS_VARIABLE,
+											permission:		PERMISSION_READWRITE
+										}, false);
+										xml += parseXML(isXMLString, childTarget + "." + "cildren()", currentDepth, maxDepth);
+										xml += createNode("/node");
+									}
+								} catch(error2:Error) {}
 							}
 							else
 							{
@@ -815,7 +853,7 @@ package nl.demonsters.debugger
 									// Try to parse the object
 									xml += parseObject(object[i], childTarget, functions, currentDepth + 1, maxDepth);
 								} 
-								catch(error2:Error)
+								catch(error3:Error)
 								{
 									// If this fails add a warning message for the user
 									xml += createNode("node", {icon:ICON_WARNING, type:TYPE_WARNING, label:"Unreadable", name:"Unreadable"}, true);
@@ -829,9 +867,6 @@ package nl.demonsters.debugger
 					}
 					
 					
-					/**
-					 * OBJECT
-					 */
 					else if (type == TYPE_OBJECT)
 					{
 						// Add data description if needed
@@ -854,23 +889,44 @@ package nl.demonsters.debugger
 							// Check if we can create a single string or a new node
 							if (childType == TYPE_STRING || childType == TYPE_BOOLEAN || childType == TYPE_NUMBER || childType == TYPE_INT || childType == TYPE_UINT || childType == TYPE_FUNCTION)
 							{
-								try
-								{
-									xml += createNode("node", {
-										icon:			ICON_VARIABLE,
-										label:			properties[i] + " (" + childType + ") = " + printObject(object[properties[i]], childType),
-										name:			properties[i],
-										type:			childType, 
-										value:			printObject(object[properties[i]], childType), 
-										target:			childTarget,
-										access:			ACCESS_VARIABLE,
-										permission:		PERMISSION_READWRITE
-									}, true);
+								isXML = false;
+								isXMLString = new XML();
+								
+								// Check if the string is a XML string
+								if (childType == TYPE_STRING) {
+									try {
+										isXMLString = new XML(object[properties[i]]);
+										if (!isXMLString.hasSimpleContent() && isXMLString.children().length() > 0) isXML = true;
+									} catch(error4:TypeError) {}
 								}
-								catch(error3:Error)
-								{
-									// Do nothing
-								}
+								
+								try {
+									if (!isXML) {
+										xml += createNode("node", {
+											icon:			ICON_VARIABLE,
+											label:			properties[i] + " (" + childType + ") = " + printObject(object[properties[i]], childType),
+											name:			properties[i],
+											type:			childType, 
+											value:			printObject(object[properties[i]], childType), 
+											target:			childTarget,
+											access:			ACCESS_VARIABLE,
+											permission:		PERMISSION_READWRITE
+										}, true);
+									} else {
+										xml += createNode("node", {
+											icon:			ICON_VARIABLE,
+											label:			properties[i] + " (" + childType + ")",
+											name:			properties[i],
+											type:			childType, 
+											value:			"", 
+											target:			childTarget,
+											access:			ACCESS_VARIABLE,
+											permission:		PERMISSION_READWRITE
+										}, false);
+										xml += parseXML(isXMLString, childTarget + "." + "cildren()", currentDepth, maxDepth);
+										xml += createNode("/node");
+									}
+								} catch(error5:Error) {}
 							}
 							else
 							{
@@ -889,7 +945,7 @@ package nl.demonsters.debugger
 									// Try to parse the object
 									xml += parseObject(object[properties[i]], childTarget, functions, currentDepth + 1, maxDepth);
 								} 
-								catch(error4:Error)
+								catch(error6:Error)
 								{
 									// If this fails add a warning message for the user
 									xml += createNode("node", {icon:ICON_WARNING, type:TYPE_WARNING, label:"Unreadable", name:"Unreadable"}, true);
@@ -903,9 +959,6 @@ package nl.demonsters.debugger
 					}
 					
 					
-					/**
-					 * XML
-					 */
 					else if (type == TYPE_XML)
 					{						
 						// Add data description if needed
@@ -919,9 +972,6 @@ package nl.demonsters.debugger
 					}
 										
 					
-					/**
-					 * XML List
-					 */
 					else if (type == TYPE_XMLLIST)
 					{						
 						// Add data description if needed
@@ -942,7 +992,7 @@ package nl.demonsters.debugger
 						
 						// Loop through the xml nodes
 						for (i = 0; i < object.length(); i++)
-						{							
+						{				
 							xml += parseXML(object[i], target + "." + String(i) + ".children()", currentDepth, maxDepth);
 						}
 						
@@ -950,29 +1000,50 @@ package nl.demonsters.debugger
 						if (currentDepth == 1) xml += createNode("/node");
 					}								
 								
-								
-					/**
-					 * STRING, NUMBER, BOOLEAN, INT, UINT
-					 */
+					
 					else if (type == TYPE_STRING || type == TYPE_BOOLEAN || type == TYPE_NUMBER || type == TYPE_INT || type == TYPE_UINT)
 					{
-						// Create the node
-						xml += createNode("node", {
-							icon:			ICON_VARIABLE,
-							label:			"(" + type + ") = " + printObject(object, type), 
-							name:			"",
-							type:			type, 
-							value:			printObject(object, type), 
-							target:			target,
-							access:			ACCESS_VARIABLE,
-							permission:		PERMISSION_READWRITE
-						}, true);
+						isXML = false;
+						isXMLString = new XML();
+						
+						// Check if the string is a XML string
+						if (type == TYPE_STRING) {
+							try {
+								isXMLString = new XML(object);
+								if (!isXMLString.hasSimpleContent() && isXMLString.children().length() > 0) isXML = true;
+							} catch(error7:TypeError) {}
+						}
+						
+						try {
+							if (!isXML) {
+								xml += createNode("node", {
+									icon:			ICON_VARIABLE,
+									label:			"(" + type + ") = " + printObject(object, type), 
+									name:			"",
+									type:			type, 
+									value:			printObject(object, type), 
+									target:			target,
+									access:			ACCESS_VARIABLE,
+									permission:		PERMISSION_READWRITE
+								}, true);
+							} else {
+								xml += createNode("node", {
+									icon:			ICON_VARIABLE,
+									label:			"(" + type + ")", 
+									name:			"",
+									type:			type, 
+									value:			"", 
+									target:			target,
+									access:			ACCESS_VARIABLE,
+									permission:		PERMISSION_READWRITE
+								}, false);
+								xml += parseXML(isXMLString, target + "." + "cildren()", currentDepth, maxDepth);
+								xml += createNode("/node");
+							}
+						} catch(error8:Error) {}
 					}
 					
 					
-					/**
-					 * CUSTOM CLASS
-					 */
 					else
 					{
 						// Add data description if needed
@@ -1050,9 +1121,7 @@ package nl.demonsters.debugger
 						methodsArr.sortOn("name");
 						
 						
-						/**
-						 * VARIABLES
-						 */
+						// VARIABLES
 						for (i = 0; i < variablesArr.length; i++)
 						{
 							// Save the type
@@ -1087,23 +1156,44 @@ package nl.demonsters.debugger
 								// Check if we can create a single string or a new node
 								if (childType == TYPE_STRING || childType == TYPE_BOOLEAN || childType == TYPE_NUMBER || childType == TYPE_INT || childType == TYPE_UINT || childType == TYPE_FUNCTION)
 								{
-									try
-									{
-										xml += createNode("node", {
-											icon:			icon,
-											label:			childName + " (" + childType + ") = " + printObject(object[childName], childType), 
-											name:			childName,
-											type:			childType, 
-											value:			printObject(object[childName], childType), 
-											target:			childTarget,
-											access:			variablesArr[i].access,
-											permission:		permission
-										}, true);
+									isXML = false;
+									isXMLString = new XML();
+									
+									// Check if the string is a XML string
+									if (childType == TYPE_STRING) {
+										try {
+											isXMLString = new XML(object[childName]);
+											if (!isXMLString.hasSimpleContent() && isXMLString.children().length() > 0) isXML = true;
+										} catch(error9:TypeError) {}
 									}
-									catch(error5:Error)
-									{
-										// Do nothing
-									}
+									
+									try {
+										if (!isXML) {
+											xml += createNode("node", {
+												icon:			icon,
+												label:			childName + " (" + childType + ") = " + printObject(object[childName], childType), 
+												name:			childName,
+												type:			childType, 
+												value:			printObject(object[childName], childType), 
+												target:			childTarget,
+												access:			variablesArr[i].access,
+												permission:		permission
+											}, true);
+										} else {
+											xml += createNode("node", {
+												icon:			icon,
+												label:			childName + " (" + childType + ")", 
+												name:			childName,
+												type:			childType, 
+												value:			"", 
+												target:			childTarget,
+												access:			variablesArr[i].access,
+												permission:		permission
+											}, false);
+											xml += parseXML(isXMLString, childTarget + "." + "cildren()", currentDepth, maxDepth);
+											xml += createNode("/node");
+										}
+									} catch(error10:Error) {}
 								}
 								else
 								{
@@ -1121,7 +1211,7 @@ package nl.demonsters.debugger
 										// Try to parse the object
 										xml += parseObject(object[childName], childTarget, functions, currentDepth + 1, maxDepth);
 									} 
-									catch(error6:Error)
+									catch(error11:Error)
 									{
 										// If this fails add a warning message for the user
 										xml += createNode("node", {icon:ICON_WARNING, type:TYPE_WARNING, label:"Unreadable", name:"Unreadable"}, true);
@@ -1132,9 +1222,7 @@ package nl.demonsters.debugger
 						}
 						
 						
-						/**
-						 * METHODS
-						 */
+						// METHODS
 						if (functions)
 						{
 							for (i = 0; i < methodsArr.length; i++)
@@ -1172,7 +1260,7 @@ package nl.demonsters.debugger
 						if (currentDepth == 1) xml += createNode("/node");
 					}
 				} 
-				catch (error7:Error)
+				catch (error12:Error)
 				{
 					// The object is not found
 					var msg:String = "";
@@ -1423,12 +1511,49 @@ package nl.demonsters.debugger
 			return s;
 		}
 		
-	
+		
+		/**
+		 * Send the current FPS
+		 * @param event: Basic event
+		 */
+		private function enterFrameHandler(event:Event):void
+		{
+			if (enabled) {
+            	monitorFrames++;
+			}
+		}
+		
+		
+		/**
+		 * Send the current memory consumption
+		 * @param event: Basic timer event
+		 */
+		private function monitorHandler(event:TimerEvent):void
+		{
+			if (enabled)
+			{
+				// Get the total Flash Player memory consumption
+				// Note: This includes all Flash Player instances
+				var memory:uint = System.totalMemory;
+				
+				// Calculate the frames pro second
+				var now:uint = getTimer();
+				var delta:uint = now - monitorTime;
+				var fps:uint = monitorFrames / delta * 1000;
+				monitorFrames = 0;
+				monitorTime = now;
+				
+				// Send the data
+				send({text:COMMAND_MONITOR, memory:memory, fps:fps, time:now, date:new Date()});
+			}
+		}
+		
+		
 		/**
 		 * Converts regular characters to HTML characters
 		 * @param s: The string to convert
 		 */
-		public function htmlEscape(s:String):String
+		private function htmlEscape(s:String):String
 		{
 			if (s) {
 				// Remove single quotes
@@ -1451,7 +1576,7 @@ package nl.demonsters.debugger
 		 * Converts HTML characters to regular characters
 		 * @param s: The string to convert
 		 */
-		public function htmlUnescape(s:String):String
+		private function htmlUnescape(s:String):String
 		{
 			if (s) {
 				var xml:XML = <a/>;

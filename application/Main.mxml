@@ -24,7 +24,7 @@
 	@author		Ferdi Koomen
 	@company	De Monsters
 	@link 		http://www.deMonsterDebugger.com
-	@version 	2.02
+	@version 	2.03
 	
 	
 	
@@ -45,7 +45,7 @@
 
 -->
 
-<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:fc="http://www.adobe.com/2006/fc" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" menu="{nativeMenu}" initialize="init()" creationComplete="creationComplete()" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:fc="http://www.adobe.com/2006/fc" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" menu="{nativeMenu}" initialize="init()" creationComplete="creationComplete()" horizontalScrollPolicy="off" verticalScrollPolicy="off" xmlns:components="components.*">
 	
 	
 	<mx:Style source="skin/style.css"/>
@@ -55,9 +55,9 @@
 		<![CDATA[
 		
 			// Import classes
-			import com.adobe.utils.StringUtil;
 			import air.update.ApplicationUpdaterUI;
 			import air.update.events.UpdateEvent;
+			
 			import mx.core.Window;
 			import mx.collections.ArrayCollection;
 			import mx.collections.XMLListCollection;
@@ -69,8 +69,10 @@
 			import mx.events.TreeEvent;
 			import mx.events.ResizeEvent;
 			import mx.events.FlexNativeMenuEvent;
+			import mx.events.ListEvent;
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
+			
 			import flash.display.NativeWindowDisplayState;
 			import flash.events.AsyncErrorEvent;
 			import flash.events.Event;
@@ -87,15 +89,21 @@
 			import flash.net.URLRequest;
 			import flash.net.Socket;
 			import flash.utils.ByteArray;
+			
+			import com.adobe.utils.StringUtil;
+			
+			import deng.fzip.FZip;
+			import deng.fzip.FZipFile;
+			import deng.fzip.FZipEvent;
+			
 			import components.PropertyEditor;
 			import components.AboutWindow;
 			import components.HelpWindow;
 			import components.TraceWindow;
 			import components.ExportedWindow;
 			import components.MethodWindow;
-			import deng.fzip.FZip;
-			import deng.fzip.FZipFile;
-			import deng.fzip.FZipEvent;
+			import components.Monitor;
+
 			
 			
 			// Bindables
@@ -177,6 +185,7 @@
 			private const COMMAND_SHOW_HIGHLIGHT	:String = "SHOW_HIGHLIGHT";
 			private const COMMAND_HIDE_HIGHLIGHT	:String = "HIDE_HIGHLIGHT";
 			private const COMMAND_CLEAR_TRACES		:String = "CLEAR_TRACES";
+			private const COMMAND_MONITOR			:String = "MONITOR";
 			private const COMMAND_NOTFOUND			:String = "NOTFOUND";
 			
 			
@@ -186,7 +195,7 @@
 			
 			
 			// Current version
-			private const VERSION:String = "2.02";
+			private const VERSION:String = "2.03";
 			
 			
 			// The current selected tree item target
@@ -218,16 +227,14 @@
 			// Toggle states
 			private var showApp:Boolean = true;
 			private var showTraces:Boolean = true;
+			private var showMonitor:Boolean = true;
 			private var uiAppHeight:Number = 66.66;
 			private var uiTracesHeight:Number = 33.33;
+			private var uiMonitorHeight:Number = 90;
 			private var uiInspectorWidth:Number = 350;
 			private var uiLoaded:Boolean = false;
 			private var dontShowProperties:Boolean = false;
 			private var alwaysOnTop:Boolean = false;
-			
-			
-			// Bottom offset
-			private var bottomOffset:int = 29;
 			
 			
 			// Default ticker data
@@ -263,8 +270,10 @@
 					nativeWindow.height = so.data.windowHeight;
 					showApp = so.data.uiShowApp;
 					showTraces = so.data.uiShowTraces;
+					showMonitor = so.data.uiShowMonitor;
 					uiAppHeight = so.data.uiAppHeight;
 					uiTracesHeight = so.data.uiTracesHeight;
+					uiMonitorHeight = so.data.uiMonitorHeight;
 					uiInspectorWidth = so.data.uiInspectorWidth;
 					dontShowProperties = so.data.dontShowProperties;
 					tickerMessage = so.data.tickerMessage;
@@ -277,8 +286,10 @@
 					so.data.version = VERSION;
 					so.data.uiShowApp = showApp;
 					so.data.uiShowTraces = showTraces;
+					so.data.uiShowMonitor = showMonitor;
 					so.data.uiAppHeight = uiAppHeight;
 					so.data.uiTracesHeight = uiTracesHeight;
+					so.data.uiMonitorHeight = uiMonitorHeight;
 					so.data.uiInspectorWidth = uiInspectorWidth;
 					so.data.dontShowProperties = dontShowProperties;
 					so.data.windowX = nativeWindow.x;
@@ -467,7 +478,8 @@
 									target:		"De MonsterDebugger", 
 									color:		0xCC0000,
 									message: 	"Please update your client class to version " + appVersion +". Double click here to export the class.", 
-									xml: 		null
+									xml: 		null,
+									date:		new Date()
 								};
 								tracesAll.addItem(versionError);
 								tracesFiltered.addItem(versionError);
@@ -479,6 +491,7 @@
 							if (functionsGrid) functionsGrid.destroyItemEditor();
 		       				properties.removeAll();
 		       				functions.removeAll();
+		       				monitor.reset();
 							send({text:COMMAND_ROOT, functions:false});
 						break;
 						
@@ -494,6 +507,7 @@
 							if (functionsGrid) functionsGrid.destroyItemEditor();
 		       				properties.removeAll();
 		       				functions.removeAll();
+		       				monitor.reset();
 						break;
 						
 						
@@ -651,7 +665,8 @@
 								target:		command.target, 
 								color:		command.color,
 								message: 	message, 
-								xml: 		command.xml
+								xml: 		command.xml,
+								date:		date
 							};
 							
 							// Add the item to the array
@@ -695,6 +710,14 @@
 							
 						break;
 						
+						// Received new FPS and menory values
+						case COMMAND_MONITOR:
+							var monitorDATE:Date = command.date;
+							var monitorTIME:uint = command.time;
+							var monitorFPS:uint = command.fps;
+							var monitorMEM:uint = command.memory;
+							monitor.addData(monitorDATE, monitorTIME, monitorFPS, monitorMEM);
+						break;
 						
 						// Received a clear traces
 						case COMMAND_CLEAR_TRACES:
@@ -1010,6 +1033,22 @@
 			
 			
 			/**
+			 * Show a trace timestamp in the memory monitor
+			 * @param event: The roll over event from the data grid
+			 */
+			private function showTraceTime(event:Event):void
+			{
+				// Check if the selected item is still available
+				if (event.currentTarget.selectedItem != null)
+				{
+					// Get the data
+					var item:Object = tracesFiltered.getItemAt(event.currentTarget.selectedIndex);
+					monitor.setMarker(item.date);
+				}
+			}
+			
+			
+			/**
 			 * An item in the app tree has been clicked
 			 * @param event: Basic event
 			 */	
@@ -1205,18 +1244,6 @@
 			
 			
 			/**
-			 * Hide the advertisement
-			 * @param event: Basic event
-			 */ 
-			private function advertisementClose(event:Event):void
-			{
-				// Remove the ad
-				advertisement.parent.removeChild(advertisement);
-				bottomOffset = 0;
-			}
-			
-			
-			/**
 			 * The application is exiting, so save the window preferences
 			 * @param event: Closing event
 			 */ 
@@ -1238,8 +1265,10 @@
 					}
 					so.data.uiShowApp = showApp;
 					so.data.uiShowTraces = showTraces;
+					so.data.uiShowMonitor = showMonitor;
 					so.data.uiAppHeight = uiAppHeight;
 					so.data.uiTracesHeight = uiTracesHeight;
+					so.data.uiMonitorHeight = uiMonitorHeight;
 					so.data.uiInspectorWidth = uiInspectorWidth;
 					so.data.dontShowProperties = dontShowProperties;
 					so.data.alwaysOnTop = alwaysOnTop;
@@ -1424,6 +1453,10 @@
 					navigateToURL(new URLRequest("http://www.demonsterdebugger.com"));
 					break
 					
+					case "feedback":
+					navigateToURL(new URLRequest("http://www.getsatisfaction.com/demonsters"));
+					break
+					
 					case "as3reference":
 					navigateToURL(new URLRequest("http://help.adobe.com/en_US/AS3LCR/Flash_10.0/index.html"));
 					break;
@@ -1513,6 +1546,11 @@
 					updateInterface();
 					break;
 					
+					case "showMonitor":
+					showMonitor = !showMonitor;
+					updateInterface();
+					break;
+					
 					case "alwaysOnTop":
 					alwaysOnTop =! alwaysOnTop;
 					if (alwaysOnTop) {
@@ -1583,9 +1621,6 @@
 			 */
 			private function updateInterface(event:NativeWindowDisplayStateEvent = null):void
 			{
-				// Save the effective UI height
-				var uiHeight:Number = height - bottomOffset - 2;
-				
 				// Enable / disable the menus
 				applicationMenu.menu[1].menuitem[0].@enabled = true;
 				applicationMenu.menu[1].menuitem[1].@enabled = true;
@@ -1597,6 +1632,13 @@
 				applicationMenu.menu[1].menuitem[11].@enabled = true;
 				applicationMenu.menu[1].menuitem[12].@enabled = true;
 				
+				// Set monitor
+				monitorCanvas.visible = showMonitor;
+				monitorCanvas.height = (showMonitor)? 90 : -2;
+					
+				// Save the effective UI height
+				var uiHeight:Number = height - advertisement.height - monitorCanvas.height - 6;
+				
 				// Show both
 				if (showTraces && showApp)
 				{
@@ -1605,79 +1647,64 @@
 					var tracesCanvasHeight:int = Math.round((uiHeight / 100) * uiTracesHeight);
 					
 					// Check for min height
-					if (appCanvasHeight < 150) {
-						tracesCanvasHeight -= (150 - appCanvasHeight);
-						appCanvasHeight = 150;
-					}
-					
-					// Check for min height
 					if (tracesCanvasHeight < 80) {
 						appCanvasHeight -= (80 - tracesCanvasHeight);
 						tracesCanvasHeight = 80;
 					}
 					
-					// Max the application canvas
+					// Check for min height
+					if (appCanvasHeight < 130) {
+						tracesCanvasHeight -= (130 - appCanvasHeight);
+						appCanvasHeight = 130;
+					}
+					
+					// Application canvas
 					appCanvas.visible = true;
-					appCanvas.minHeight = 150;
+					appCanvas.minHeight = 130;
 					appCanvas.maxHeight = 10000;
 					appCanvas.height = appCanvasHeight;
 					
-					// Max the tree canvas
+					// Trace canvas
 					tracesCanvas.visible = true;
 					tracesCanvas.minHeight = 80;
 					tracesCanvas.maxHeight = 10000;
 					tracesCanvas.height = tracesCanvasHeight;
-					
-					// Set the menus
-					applicationMenu.menu[2].menuitem[0].@toggled = false;
-					applicationMenu.menu[2].menuitem[1].@toggled = false;
-					applicationMenu.menu[2].menuitem[2].@toggled = true;
 				}
 				
 				// Show application only
 				if (!showTraces && showApp)
 				{
-					// Max the application canvas
+					// Application canvas
 					appCanvas.visible = true;
-					appCanvas.minHeight = 0;
+					appCanvas.minHeight = 80;
 					appCanvas.maxHeight = 10000;
-					appCanvas.height = height - bottomOffset;
+					appCanvas.height = uiHeight;
 					
-					// Hide the trace canvas
+					// Trace canvas
 					tracesCanvas.visible = false;
 					tracesCanvas.minHeight = -2;
 					tracesCanvas.maxHeight = -2;
 					tracesCanvas.height = -2;
-					
-					// Set the menus
-					applicationMenu.menu[2].menuitem[0].@toggled = true;
-					applicationMenu.menu[2].menuitem[1].@toggled = false;
-					applicationMenu.menu[2].menuitem[2].@toggled = false;
-				
+
 					// Enable / disable the menus
 					applicationMenu.menu[1].menuitem[1].@enabled = false;
-					applicationMenu.menu[1].menuitem[12].@enabled = false;	
+					applicationMenu.menu[1].menuitem[12].@enabled = false;
 				}
 				
 				// Show traces only
 				if (showTraces && !showApp)
 				{
-					// Max the trace canvas
-					tracesCanvas.visible = true;
-					tracesCanvas.minHeight = 0;
-					tracesCanvas.maxHeight = 10000;
-					tracesCanvas.height = height - bottomOffset;
-					
-					// Hide the application canvas
+					// Application canvas
 					appCanvas.visible = false;
 					appCanvas.minHeight = -2;
 					appCanvas.maxHeight = -2;
 					appCanvas.height = -2;
 					
-					// Set the menus
-					applicationMenu.menu[2].menuitem[0].@toggled = false;
-					applicationMenu.menu[2].menuitem[1].@toggled = true;
-					applicationMenu.menu[2].menuitem[2].@toggled = false;
+					// Trace canvas
+					tracesCanvas.visible = true;
+					tracesCanvas.minHeight = 80;
+					tracesCanvas.maxHeight = 10000;
+					tracesCanvas.height = uiHeight;
 					
 					// Enable / disable the menus
 					applicationMenu.menu[1].menuitem[0].@enabled = false;
@@ -1690,7 +1717,11 @@
 				
 				// Set the menu options
 				applicationMenu.menu[1].menuitem[6].@toggled = dontShowProperties;
-				applicationMenu.menu[2].menuitem[4].@toggled = alwaysOnTop;
+				applicationMenu.menu[2].menuitem[0].@toggled = (showApp && !showTraces)? true : false;
+				applicationMenu.menu[2].menuitem[1].@toggled = (!showApp && showTraces)? true : false;
+				applicationMenu.menu[2].menuitem[2].@toggled = (showApp && showTraces)? true : false;
+				applicationMenu.menu[2].menuitem[4].@toggled = showMonitor;
+				applicationMenu.menu[2].menuitem[6].@toggled = alwaysOnTop;
 				
 				// Set the loaded flag
 				uiLoaded = true;
@@ -1750,7 +1781,7 @@
 			 * Converts regular characters to HTML characters
 			 * @param s: The string to convert
 			 */
-			public function htmlEscape(s:String):String
+			private function htmlEscape(s:String):String
 			{
 				if (s) {
 					// Remove single quotes
@@ -1773,7 +1804,7 @@
 			 * Converts HTML characters to regular characters
 			 * @param s: The string to convert
 			 */
-			public function htmlUnescape(s:String):String
+			private function htmlUnescape(s:String):String
 			{
 				if (s) {
 					var xml:XML = <a/>;
@@ -1783,11 +1814,30 @@
 					return "";
 				}
 			}
-
+			
+			
+			private function setupDebugPlayer():void
+			{
+				// Copy the file "mm.cfg"
+				// - Macintosh OS X              MacHD/Library/Application Support/macromedia/
+				// - Microsoft Windows Vista     C:\Users\user_name\
+				// - Microsoft Windows 2000/XP   C:\Documents and Settings\user_name\
+				// - Linux                       /home/user_name/
 				
+				// Create the file "flashlog.txt"
+				// - Macintosh OS X              MacHD/Users/user_name/Library/Preferences/Macromedia/Flash Player/Logs:
+				// - Microsoft Windows Vista     C:\Users\user_name\AppData\Roaming\Macromedia\Flash Player\Logs\
+				// - Windows 2000/XP             C:\Documents and Settings\user_name\Application Data\Macromedia\Flash Player\Logs\
+				// - Linux                       /home/user_name/.macromedia/Flash_Player/Logs/
+				
+				// We can't finish this function due to the fact that Adobe AIR locks the flash log file 
+				// This is the bug report URL: http://bugs.adobe.com/jira/browse/SDK-14536
+			}
+			
+
 			/**
 			 * Event handlers
-			 * These can be used for debugging De MonsterDebugger
+			 * These can be used for debugging
 			 */
 			private function closeHandler(event:Event):void {}
 			private function connectHandler(event:Event):void {}
@@ -1832,9 +1882,11 @@
 			<menu label="Window" mnemonic="0">
 				<menuitem label="Show Live Application" type="check" toggled="false" command="showApp" key="3" mnemonic="5"/>
 				<menuitem label="Show Traces" type="check" toggled="false" command="showTraces" key="2" mnemonic="5"/>
-				<menuitem label="Show Both" type="check" toggled="true" command="showBoth" key="1" mnemonic="5"/>
+				<menuitem label="Show Both" type="check" toggled="false" command="showBoth" key="1" mnemonic="5"/>
 				<menuitem label="" type="separator"/>
-				<menuitem label="Always on top" type="check" toggled="false" command="alwaysOnTop" mnemonic="1"/>
+				<menuitem label="Show Monitor" type="check" toggled="false" command="showMonitor" key="4" mnemonic="5"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="Always on top" type="check" toggled="false" command="alwaysOnTop" mnemonic="0"/>
 			</menu>
 			<menu label="Help" mnemonic="0">
 				<menuitem label="Help" command="help" mnemonic="0"/>
@@ -1847,7 +1899,8 @@
 				<menuitem label="Adobe Flash Players" command="as3player" mnemonic="18"/>
 				<menuitem label="" type="separator"/>
 				<menuitem label="About" command="about" mnemonic="0"/>
-				<menuitem label="Product Website" command="website" mnemonic="8"/>				
+				<menuitem label="Product Website" command="website" mnemonic="8"/>
+				<menuitem label="Feedback" command="feedback" mnemonic="4"/>
 			</menu>
 		</menubar>
 	</mx:XML>
@@ -1857,8 +1910,8 @@
 	
 	
 	<mx:VBox x="0" y="1" width="100%" height="100%" horizontalGap="2" verticalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off">
-		<mx:VDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true"  mouseDown="addResizeListeners()" mouseUp="removeResizeListeners()" horizontalScrollPolicy="off" verticalScrollPolicy="off">
-			<mx:Canvas id="appCanvas" width="100%" height="100%" minHeight="150">
+		<mx:VDividedBox width="100%" height="100%" minHeight="0" horizontalGap="2" verticalGap="2" liveDragging="true" mouseDown="addResizeListeners()" mouseUp="removeResizeListeners()" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+			<mx:Canvas id="appCanvas" width="100%" height="100%">
 				<mx:HDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true" horizontalScrollPolicy="off" verticalScrollPolicy="off">
 					<mx:Canvas width="100%" height="100%" minWidth="400">
 						<mx:Panel width="100%" height="100%"/>
@@ -1867,7 +1920,7 @@
 						<mx:TextInput id="appFilterField" height="20" change="filterApplication()" y="6" right="20" width="160"/>			
 						<mx:Tree id="tree" dataProvider="{appFiltered}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" itemOpen="treeOpen(event)" click="treeClick(event)" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
 					</mx:Canvas>
-					<mx:Canvas id="inspectorCanvas" width="350" minWidth="250" height="100%">
+					<mx:Canvas id="inspectorCanvas" width="350" height="100%">
 						<mx:Panel width="100%" height="100%"/>
 						<mx:Label text="INSPECTOR" fontWeight="bold" fontSize="11" x="10" y="8"/>
 						<mx:Image y="32" source="skin/assets/TabBar-background.png" left="5" right="5" scaleContent="false" height="18"/>
@@ -1917,7 +1970,7 @@
 				<mx:Label text="Filter" y="8" right="270"/>
 				<mx:VRule height="100%"/>
 				<mx:Button height="22" click="clearTraces()" toolTip="Clear all traces" y="5" label="CLEAR" right="20"/>
-				<mx:DataGrid dataProvider="{tracesFiltered}" id="tracesDatagrid" doubleClickEnabled="true" itemDoubleClick="showTraceWindow(event)" left="5" top="32" right="5" bottom="5">
+				<mx:DataGrid dataProvider="{tracesFiltered}" id="tracesDatagrid" doubleClickEnabled="true" itemClick="showTraceTime(event)" itemDoubleClick="showTraceWindow(event)" left="5" top="32" right="5" bottom="5">
 					<mx:columns>
 						<mx:DataGridColumn headerText="#" dataField="line" width="30">
 							<mx:itemRenderer>
@@ -1959,6 +2012,11 @@
 				</mx:DataGrid>
 			</mx:Canvas>
 		</mx:VDividedBox>
+		<mx:Canvas id="monitorCanvas" width="100%" height="90">
+			<mx:Panel width="100%" height="100%"/>
+			<mx:Label text="MONITOR" fontWeight="bold" x="10" y="8" fontSize="11"/>
+			<components:Monitor id="monitor" left="3" top="30" right="3" bottom="3"/>
+		</mx:Canvas>
 		<mx:Canvas id="advertisement" width="100%" height="26" backgroundAlpha="1" backgroundColor="#666666" buttonMode="true" useHandCursor="true" rollOver="advertisementRollOver()" rollOut="advertisementRollOut()" click="advertisementClick(event)">
 			<mx:Label id="advertisementLabel" y="4" mouseEnabled="false" mouseChildren="false" left="10" right="50" color="#CCCCCC" fontWeight="normal"/>
 		</mx:Canvas>

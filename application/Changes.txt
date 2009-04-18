@@ -20,6 +20,10 @@ Version 2.02
 - Added an Flash CS3 example file
 - Added support for Vector
 
+Version 2.03
+- Added commands for memory and FPS monitor
+- Fixed a bug tracing strings that hold XML formated data
+
 
 
 
@@ -47,7 +51,11 @@ Version 2.02
 - Fixed a refresh bug with the "Don't Show Single Properties" option
 - Fixes a refresh bug with the live application
 - Optimised the HTML escape / unescape function
-- Signed AIR application
 
+Version 2.03
+- Signed AIR application
+- Memory and FPS monitor
+- Fixed the min size (800 x 400)
+- Updated the help file
 
 
