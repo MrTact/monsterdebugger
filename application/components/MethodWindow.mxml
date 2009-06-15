@@ -6,8 +6,6 @@
 
 			
 			// Import classes
-			import mx.events.MenuEvent;
-			import mx.events.FlexNativeMenuEvent;
 			import mx.collections.XMLListCollection;
 			import components.MethodRepeaterItem;
 			
@@ -102,6 +100,13 @@
 			 */
 			private function creationComplete():void
 			{
+				// Add event listener to the stage
+				stage.addEventListener(KeyboardEvent.KEY_UP, function(event:KeyboardEvent):void {
+					if (event.charCode == 27) {
+						close(); // The users pressed ESC
+					}
+				});
+				
 				// Set the info fields
 				fieldFunction.text = _name;
 				fieldParameters.text = _args;

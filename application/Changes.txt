@@ -24,6 +24,10 @@ Version 2.03
 - Added commands for memory and FPS monitor
 - Fixed a bug tracing strings that hold XML formated data
 
+Version 2.04
+- Added a new function called inspect()
+- Added a new function called snapshot()
+- Added support for multidimensional and mixed arrays
 
 
 
@@ -54,8 +58,17 @@ Version 2.02
 
 Version 2.03
 - Signed AIR application
-- Memory and FPS monitor
+- Added a memory and FPS monitor
 - Fixed the min size (800 x 400)
 - Updated the help file
 
+Version 2.04
+- Build with the new Flex 3.3 SDK
+- Export and load traces
+- Close windows with the ESC key
+- Updated the help file (Gaia Framework)
+- Fixed the traces filter
+- Fixed wrapping of text in the properties panel
+- Added a window to display snapshots
+- Added a DisplayList drilldown view
 

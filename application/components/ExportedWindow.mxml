@@ -1,6 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<mx:Window xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:components="components.*" title="De MonsterDebugger" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" width="200" height="100" resizable="false" maximizable="false" minimizable="false">
+<mx:Window xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:components="components.*" title="De MonsterDebugger" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" width="200" height="100" resizable="false" maximizable="false" minimizable="false" creationComplete="creationComplete()">
 
+	<mx:Script>
+		<![CDATA[
+			private function creationComplete():void
+			{
+				stage.addEventListener(KeyboardEvent.KEY_UP, function(event:KeyboardEvent):void {
+					if (event.charCode == 27) {
+						close(); // The users pressed ESC
+					}
+				});
+			}
+		]]>
+	</mx:Script>
+	
 	<mx:Canvas width="100%" height="40" backgroundAlpha="1" backgroundColor="#D6D6D6" bottom="0">
 		<mx:Button label="OK" y="9" horizontalCenter="0" click="close()"/>
 	</mx:Canvas>

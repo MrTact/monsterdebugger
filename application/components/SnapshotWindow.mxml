@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Window xmlns:mx="http://www.adobe.com/2006/mxml" title="De MonsterDebugger - Snapshot" name="SnapshotWindow" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" creationComplete="creationComplete()" width="760" height="500" minWidth="380" minHeight="285">
+
+	<mx:Script>
+		<![CDATA[
+
+			
+			
+			// The item to show
+			private var _bitmapData:BitmapData;
+			private var _bitmap:Bitmap;
+			private var _width:Number = 0;
+			private var _height:Number = 0;	
+			
+			/**
+			 * Set the data in the trace window
+			 * @param item: The object containing all the data
+			 */ 
+			public function setData(item:Object):void
+			{
+				// Save the item
+				_bitmapData = item.bitmapData;
+				_bitmap = new Bitmap(_bitmapData);
+				_width = item.width;
+				_height = item.height;
+			}
+			
+			
+			/**
+			 * The application is ready
+			 */
+			private function creationComplete():void
+			{
+				// Add event listener to the stage
+				stage.addEventListener(KeyboardEvent.KEY_UP, function(event:KeyboardEvent):void {
+					if (event.charCode == 27) {
+						close(); // The users pressed ESC
+					}
+				});
+				
+				// Save the bitmap
+				imageCanvas.rawChildren.addChild(_bitmap);
+				imageCanvas.width = _width;
+				imageCanvas.height = _height;
+			}			
+			
+		]]>	
+	</mx:Script>
+	
+	<mx:Panel width="100%" height="100%"/>
+	<mx:Label text="SNAPSHOT DETAILS" fontWeight="bold" x="10" y="8" fontSize="11"/>
+	<mx:Canvas top="31" left="4" right="4" bottom="4" verticalScrollPolicy="auto" horizontalScrollPolicy="auto">
+		<mx:Canvas id="imageCanvas" width="0" height="0" visible="true"/>
+	</mx:Canvas>
+</mx:Window>

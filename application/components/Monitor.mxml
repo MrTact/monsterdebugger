@@ -56,6 +56,7 @@
 				spritePoint.graphics.clear();
 				monitorFPS.text = "FPS:";
 				monitorMEM.text = "MEM:";
+				timestamp = 0;
 				timestampMin = 0;
 				timestampMax = 0;
 			}
@@ -63,7 +64,7 @@
 			
 			public function setMarker(date:Date):void
 			{
-				timestamp = date.time;	
+				timestamp = date.time;
 				if (timestamp < timestampMin && timestamp > timestampMax) {
 					update();
 				}
@@ -190,7 +191,9 @@
 			
 		]]>
 	</mx:Script>
+	
 	<mx:Canvas x="0" y="0" width="120" height="100%" backgroundAlpha="1" backgroundColor="#222222"/>
 	<mx:Label text="FPS:" id="monitorFPS" fontWeight="normal" x="8" y="10" fontSize="10" color="#FFFFFF"/>
 	<mx:Label text="MEM:" id="monitorMEM" fontWeight="normal" x="8" y="30" fontSize="10" color="#FFC000"/>
+	
 </mx:Canvas>

@@ -16,9 +16,11 @@
  * @author		Ferdi Koomen
  * @company 	De Monsters
  * @link 		http://www.deMonsterDebugger.com
- * @version 	2.03
+ * @version 	2.04
  * 
- * 
+ *
+ * Special thanks to Arjan van Wijk from MediaMonks.nl
+ *
  * 
  * Copyright 2009, De Monsters
  * 
@@ -30,9 +32,9 @@
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  * 
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  */
@@ -41,7 +43,10 @@
 package nl.demonsters.debugger
 {
 	
+	import flash.display.Bitmap;
+	import flash.display.BitmapData;
 	import flash.display.DisplayObject;
+	import flash.display.DisplayObjectContainer;
 	import flash.display.Sprite;
 	import flash.events.AsyncErrorEvent;
 	import flash.events.SecurityErrorEvent;
@@ -88,8 +93,11 @@ package nl.demonsters.debugger
 		// Commands
 		private const COMMAND_HELLO				:String = "HELLO";
 		private const COMMAND_ROOT				:String = "ROOT";
+		private const COMMAND_BASE				:String = "BASE";
 		private const COMMAND_TRACE				:String = "TRACE";
+		private const COMMAND_INSPECT			:String = "INSPECT";
 		private const COMMAND_GET_OBJECT		:String = "GET_OBJECT";
+		private const COMMAND_GET_DISPLAYOBJECT	:String = "GET_DISPLAYOBJECT";
 		private const COMMAND_GET_PROPERTIES	:String = "GET_PROPERTIES";
 		private const COMMAND_GET_FUNCTIONS		:String = "GET_FUNCTIONS";
 		private const COMMAND_SET_PROPERTY		:String = "SET_PROPERTY";
@@ -98,6 +106,7 @@ package nl.demonsters.debugger
 		private const COMMAND_HIDE_HIGHLIGHT	:String = "HIDE_HIGHLIGHT";
 		private const COMMAND_CLEAR_TRACES		:String = "CLEAR_TRACES";
 		private const COMMAND_MONITOR			:String = "MONITOR";
+		private const COMMAND_SNAPSHOT			:String = "SNAPSHOT";
 		private const COMMAND_NOTFOUND			:String = "NOTFOUND";
 		
 		
@@ -109,6 +118,8 @@ package nl.demonsters.debugger
 		private const TYPE_OBJECT				:String = "Object";
 		private const TYPE_VECTOR				:String = "Vector";
 		private const TYPE_STRING				:String = "String";
+		private const TYPE_BITMAP				:String = "Bitmap";
+		private const TYPE_BITMAPDATA			:String = "BitmapData";
 		private const TYPE_INT					:String = "int";
 		private const TYPE_UINT					:String = "uint";
 		private const TYPE_XML					:String = "XML";
@@ -159,7 +170,7 @@ package nl.demonsters.debugger
 		
 		
 		// Version
-		private const VERSION:Number = 2.03;
+		private const VERSION:Number = 2.04;
 		
 		
 		// The root of the application
@@ -267,6 +278,10 @@ package nl.demonsters.debugger
 						if (object != null) {
 							xml = XML(parseObject(object, "", command["functions"], 1, 2));
 							send({text:COMMAND_ROOT, xml:xml});
+							if (isDisplayObject(object)) {
+								xml = XML(parseDisplayObject(object, "", command["functions"], 1, 2));
+								send({text:COMMAND_BASE, xml:xml});
+							}
 						}
 					break;
 					
@@ -276,6 +291,17 @@ package nl.demonsters.debugger
 						if (object != null) {
 							xml = XML(parseObject(object, command["target"], command["functions"], 1, 2));
 							send({text:COMMAND_GET_OBJECT, xml:xml});
+						}
+					break;
+					
+					// Return the parsed object
+					case COMMAND_GET_DISPLAYOBJECT:
+						object = getObject(command["target"], 0);
+						if (object != null) {
+							if (isDisplayObject(object)) {
+								xml = XML(parseDisplayObject(object, command["target"], command["functions"], 1, 2));
+								send({text:COMMAND_GET_DISPLAYOBJECT, xml:xml});
+							}
 						}
 					break;
 					
@@ -440,6 +466,73 @@ package nl.demonsters.debugger
 			}
 		}
 		
+
+		/**
+		 * Set another target in the or window
+		 * @param target: The target to display in the or
+		 */
+		public static function inspect(target:Object):void
+		{
+			// Check if the debugger has been enabled
+			if (instance != null && target != null)
+			{
+				// Set the new root
+				instance.root = target;
+				
+				// Parse the new target
+				// Send the new XML
+				var object:* = instance.getObject("", 0);
+				if (object != null) {
+					var xml:XML = XML(instance.parseObject(object, "", false, 1, 2));
+					instance.send({text:instance.COMMAND_INSPECT, xml:xml});
+					if (instance.isDisplayObject(object)) {
+						xml = XML(instance.parseDisplayObject(object, "", false, 1, 2));
+						instance.send({text:instance.COMMAND_BASE, xml:xml});
+					}
+				}
+			}
+		}
+		
+		
+		/**
+		 * Static snapshot function
+		 * @param target: The target from where the snapshot is called
+		 * @param object: The object to snapshot
+		 * @param color: The color in the interface
+		 */
+		public static function snapshot(target:DisplayObject, color:uint = 0x111111):void
+		{
+			if (instance == null) instance = new MonsterDebugger(MonsterDebugger.singletonCheck);
+			if (MonsterDebugger.enabled) instance.snapshotInternal(target, color);
+		}
+		
+		
+		/**
+		 * Private snapshot function
+		 * @param target: The target from where the snapshot is called
+		 * @param object: The object to snapshot
+		 * @param color: The color in the interface
+		 */
+		private function snapshotInternal(target:DisplayObject, color:uint = 0x111111):void
+		{
+			if (enabled)
+			{
+				// Create the bitmapdata
+				var bitmapData:BitmapData = new BitmapData(target.width, target.height);
+				bitmapData.draw(target);
+				
+				// Write the bitmap in the bytearray
+				var bytes:ByteArray = bitmapData.getPixels(new Rectangle(0, 0, target.width, target.height));
+				
+				//Create a send object
+				send({text:COMMAND_SNAPSHOT, date:new Date(), target:String(target), bytes:bytes, width:target.width, height:target.height, color:color});
+				
+				// Clear the data
+				bitmapData.dispose();
+				bytes = null;
+			}
+		}
+		
 		
 		/**
 		 * Static trace function
@@ -508,24 +601,7 @@ package nl.demonsters.debugger
 		 */
 		private function isDisplayObject(object:*):Boolean
 		{
-			// The return value
-			var drawable:Boolean = false;
-			
-			try {
-				// Get the descriptor
-				var description:XML = describeType(object);
-				for (var i:int = 0; i < description.extendsClass.length(); i++) {
-					if (parseType(description.extendsClass[i].@type) == TYPE_DISPLAYOBJECT){
-						drawable = true;
-						break;
-					}
-				}
-			} catch(error:Error) {
-				// Do nothing
-			}
-			
-			// Return the flag
-			return drawable;
+			return (object is DisplayObject || object is DisplayObjectContainer);
 		}
 		
 		
@@ -554,10 +630,19 @@ package nl.demonsters.debugger
 						try
 						{
 							// Check if we should call the XML children function()
+							// Or the getChildAt function
 							// If not: Just update the path to the object
-							if (splitted[i] == "children()") {
+							if (splitted[i] == "children()")
+							{
 								object = object.children();
-							} else {
+							} 
+							else if (splitted[i].indexOf("getChildAt(") == 0)
+							{
+								var index:Number = splitted[i].substring(11, splitted[i].indexOf(")", 11));
+								object = DisplayObjectContainer(object).getChildAt(index);
+							}
+							else
+							{
 								object = object[splitted[i]];
 							}
 						}
@@ -575,7 +660,7 @@ package nl.demonsters.debugger
 			return object;
 		}
 		
-		
+
 		/**
 		 * Get the functions of an object
 		 * @param object: The object to parse
@@ -787,12 +872,19 @@ package nl.demonsters.debugger
 							permission:		PERMISSION_READONLY
 						}, true);
 						
+						// Get and sort the properties
+						var keys:Array = new Array();
+						for (var key:* in object) {
+							keys.push(key);
+						}
+						keys.sort();
+						
 						// Loop through the array
-						for (i = 0; i < object["length"]; i++)
+						for (i = 0; i < keys.length; i++)
 						{
 							// Save the type
-							childType = parseType(describeType(object[i]).@name);
-							childTarget = target + "." + String(i);
+							childType = parseType(describeType(object[keys[i]]).@name);
+							childTarget = target + "." + String(keys[i]);
 							
 							// Check if we can create a single string or a new node
 							if (childType == TYPE_STRING || childType == TYPE_BOOLEAN || childType == TYPE_NUMBER || childType == TYPE_INT || childType == TYPE_UINT || childType == TYPE_FUNCTION)
@@ -803,7 +895,7 @@ package nl.demonsters.debugger
 								// Check if the string is a XML string
 								if (childType == TYPE_STRING) {
 									try {
-										isXMLString = new XML(object[i]);
+										isXMLString = new XML(object[keys[i]]);
 										if (!isXMLString.hasSimpleContent() && isXMLString.children().length() > 0) isXML = true;
 									} catch(error1:TypeError) {}
 								}
@@ -812,10 +904,10 @@ package nl.demonsters.debugger
 									if (!isXML) {
 										xml += createNode("node", {
 											icon:			ICON_VARIABLE,
-											label:			"[" + i + "] (" + childType + ") = " + printObject(object[i], childType), 
-											name:			"[" + i + "]",
+											label:			"[" + keys[i] + "] (" + childType + ") = " + printObject(object[keys[i]], childType), 
+											name:			"[" + keys[i] + "]",
 											type:			childType, 
-											value:			printObject(object[i], childType), 
+											value:			printObject(object[keys[i]], childType), 
 											target:			childTarget,
 											access:			ACCESS_VARIABLE,
 											permission:		PERMISSION_READWRITE
@@ -823,8 +915,8 @@ package nl.demonsters.debugger
 									} else {
 										xml += createNode("node", {
 											icon:			ICON_VARIABLE,
-											label:			"[" + i + "] (" + childType + ")", 
-											name:			"[" + i + "]",
+											label:			"[" + keys[i] + "] (" + childType + ")", 
+											name:			"[" + keys[i] + "]",
 											type:			childType, 
 											value:			"", 
 											target:			childTarget,
@@ -840,8 +932,8 @@ package nl.demonsters.debugger
 							{
 								xml += createNode("node", {
 									icon:			ICON_VARIABLE,
-									label:			"[" + i + "] (" + childType + ")", 
-									name:			"[" + i + "]",
+									label:			"[" + keys[i] + "] (" + childType + ")", 
+									name:			"[" + keys[i] + "]",
 									type:			childType, 
 									value:			"",
 									target:			childTarget,
@@ -851,7 +943,7 @@ package nl.demonsters.debugger
 								try 
 								{
 									// Try to parse the object
-									xml += parseObject(object[i], childTarget, functions, currentDepth + 1, maxDepth);
+									xml += parseObject(object[keys[i]], childTarget, functions, currentDepth + 1, maxDepth);
 								} 
 								catch(error3:Error)
 								{
@@ -1277,6 +1369,111 @@ package nl.demonsters.debugger
 			//Return the xml
 			return xml;
 		}
+
+
+		/**
+		 * Parse a display object
+		 * @param object: The object to parse
+		 * @param target: A point seperated path to the object
+		 * @param functions: Include or exclude functions
+		 * @param currentDepth: The current trace depth
+		 * @param maxDepth:: The maximum trace depth
+		 */
+		private function parseDisplayObject(object:*, target:String = "", functions:Boolean = false, currentDepth:int = 1, maxDepth:int = 4):String
+		{
+			// Variables needed in the loops
+			var xml:String = "";
+			var childs:Array;
+			var child:DisplayObject;
+			var childType:String = "";
+			var childIcon:String = "";
+			var childName:String = "";
+			var childTarget:String = "";
+			var childChildren:String = "";
+			var i:int = 0;
+			var n:int = 0;
+			
+			// Check if the max trace depth is reached
+			if (maxDepth == -1 || currentDepth <= maxDepth)
+			{
+				// Create the opening node if needed
+				if (currentDepth == 1) xml += createNode("root");
+				
+				try
+				{
+					// Add data description if needed
+					if (currentDepth == 1) {
+						var ojectName:String = DisplayObject(object).name;
+						if (ojectName == null || ojectName == "null") {
+							ojectName = "DisplayObject";
+						}
+						xml += createNode("node", {icon:ICON_ROOT, label:"(" + ojectName + ")", target:target});
+					}
+					
+					// Get the childs
+					childs = new Array();
+					for (i = 0; i < DisplayObjectContainer(object).numChildren; i++) {
+						childs.push(DisplayObjectContainer(object).getChildAt(i));
+					}
+					
+					// Loop through the array
+					for (i = 0; i < childs.length; i++)
+					{
+						// Save the child properties
+						child = childs[i];
+						childName = describeType(child).@name;
+						childType = parseType(childName);
+						childTarget = target + "." + "getChildAt(" + i + ")";
+						childIcon = child is DisplayObjectContainer ? ICON_ROOT : ICON_VARIABLE;
+						childChildren = child is DisplayObjectContainer ? String(DisplayObjectContainer(child).numChildren) : ""
+						
+						// Create the node
+						xml += createNode("node", {
+							icon: 			childIcon, 
+							label: 			child.name + " (" + childType + ") " + childChildren, 
+							name:			child.name, 
+							type:			childType, 
+							value:			printObject(child, childType),
+							target: 		childTarget,
+							access:			ACCESS_VARIABLE,
+							permission:		PERMISSION_READWRITE
+						});
+						
+						try 
+						{
+							// Try to parse the object
+							xml += parseDisplayObject(child, childTarget, functions, currentDepth + 1, maxDepth);
+						}
+						catch(error13:Error)
+						{
+							// If this fails add a warning message for the user
+							xml += createNode("node", {icon:ICON_WARNING, type:TYPE_WARNING, label:"Unreadable", name:"Unreadable"}, true);
+						}
+						
+						xml += createNode("/node");
+					}
+					
+					// Create a closing node if needed
+					if (currentDepth == 1) xml += createNode("/node");
+				} 
+				catch (error14:Error)
+				{
+					// The object is not found
+					var msg:String = "";
+					msg += createNode("root");
+					msg += createNode("node", {icon:ICON_WARNING, type:TYPE_WARNING, label:"Not found", name:"Not found"}, true);
+					msg += createNode("/root");
+					send({text:COMMAND_NOTFOUND, target:target, xml:XML(msg)});
+				}
+				
+				// Create a closing node if needed
+				if (currentDepth == 1) xml += createNode("/root");
+			}
+	
+			//Return the xml
+			return xml;
+
+		}
 		
 		
 		/**
@@ -1565,7 +1762,7 @@ package nl.demonsters.debugger
 					s = s.replace("\"", "&quot;");
 				}
                 var xml:XML = <a>{s}</a>;
-                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)/g, "");
+				return xml.toXMLString().replace(/(^<a>)|(<\/a>$)|(^<a\/>$)/g, "");
 			} else {
 				return "";
 			}

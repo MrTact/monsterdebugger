@@ -1,16 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<mx:Window xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:components="components.*" title="De MonsterDebugger - Help" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" width="820" height="500" minWidth="380" minHeight="285">
+<mx:Window xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:components="components.*" title="De MonsterDebugger - Help" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" width="820" height="500" minWidth="380" minHeight="285" creationComplete="creationComplete()">
 
 	<mx:Script>
 		<![CDATA[
-		
+			
+			/**
+			 * Close the window if the users pressed ESC
+			 */
+			private function creationComplete():void
+			{
+				stage.addEventListener(KeyboardEvent.KEY_UP, function(event:KeyboardEvent):void {
+					if (event.charCode == 27) {
+						close(); // The users pressed ESC
+					}
+				});
+				
+			}
+			
 			// Say hello to the workaround...
 			// This is really strange but it shows the scrollbar!
 			private function scrollbarCheck():void
 			{
 				// No clue why this works, but is does so we're happy :-)
-				if (visible) {
-					html.verticalScrollPosition++;
+				try {
+					if (visible) {
+						html.verticalScrollPosition++;
+					}
+				} catch (error:TypeError) {
+					// Do nothing
 				}
 			}
 			

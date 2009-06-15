@@ -24,8 +24,10 @@
 	@author		Ferdi Koomen
 	@company	De Monsters
 	@link 		http://www.deMonsterDebugger.com
-	@version 	2.03
+	@version 	2.04
 	
+	
+	Special thanks to Arjan van Wijk from MediaMonks.nl
 	
 	
 	Copyright 2009, De Monsters
@@ -47,17 +49,15 @@
 
 <mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:fc="http://www.adobe.com/2006/fc" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" menu="{nativeMenu}" initialize="init()" creationComplete="creationComplete()" horizontalScrollPolicy="off" verticalScrollPolicy="off" xmlns:components="components.*">
 	
-	
+		
 	<mx:Style source="skin/style.css"/>
 	
 	
 	<mx:Script>
 		<![CDATA[
-		
-			// Import classes
+			
 			import air.update.ApplicationUpdaterUI;
 			import air.update.events.UpdateEvent;
-			
 			import mx.core.Window;
 			import mx.collections.ArrayCollection;
 			import mx.collections.XMLListCollection;
@@ -72,7 +72,6 @@
 			import mx.events.ListEvent;
 			import mx.rpc.events.FaultEvent;
 			import mx.rpc.events.ResultEvent;
-			
 			import flash.display.NativeWindowDisplayState;
 			import flash.events.AsyncErrorEvent;
 			import flash.events.Event;
@@ -89,21 +88,18 @@
 			import flash.net.URLRequest;
 			import flash.net.Socket;
 			import flash.utils.ByteArray;
-			
 			import com.adobe.utils.StringUtil;
-			
 			import deng.fzip.FZip;
 			import deng.fzip.FZipFile;
 			import deng.fzip.FZipEvent;
-			
 			import components.PropertyEditor;
 			import components.AboutWindow;
 			import components.HelpWindow;
 			import components.TraceWindow;
+			import components.SnapshotWindow;
 			import components.ExportedWindow;
 			import components.MethodWindow;
 			import components.Monitor;
-
 			
 			
 			// Bindables
@@ -113,7 +109,7 @@
 			[Bindable] private var functions:ArrayCollection = new ArrayCollection();
 			[Bindable] private var appAll:XMLListCollection = new XMLListCollection();
 			[Bindable] private var appFiltered:XMLListCollection = new XMLListCollection();
-			
+			[Bindable] private var displayAll:XMLListCollection = new XMLListCollection();
 		    
 			// Icons
 			[Bindable] [Embed(source="icons/bullet_blue.png")] public var iconDefault:Class;
@@ -176,8 +172,11 @@
 			// Commands
 			private const COMMAND_HELLO				:String = "HELLO";
 			private const COMMAND_ROOT				:String = "ROOT";
+			private const COMMAND_BASE				:String = "BASE";
 			private const COMMAND_TRACE				:String = "TRACE";
+			private const COMMAND_INSPECT			:String = "INSPECT";
 			private const COMMAND_GET_OBJECT		:String = "GET_OBJECT";
+			private const COMMAND_GET_DISPLAYOBJECT	:String = "GET_DISPLAYOBJECT";
 			private const COMMAND_GET_PROPERTIES	:String = "GET_PROPERTIES";
 			private const COMMAND_GET_FUNCTIONS		:String = "GET_FUNCTIONS";
 			private const COMMAND_SET_PROPERTY		:String = "SET_PROPERTY";
@@ -186,6 +185,7 @@
 			private const COMMAND_HIDE_HIGHLIGHT	:String = "HIDE_HIGHLIGHT";
 			private const COMMAND_CLEAR_TRACES		:String = "CLEAR_TRACES";
 			private const COMMAND_MONITOR			:String = "MONITOR";
+			private const COMMAND_SNAPSHOT			:String = "SNAPSHOT";
 			private const COMMAND_NOTFOUND			:String = "NOTFOUND";
 			
 			
@@ -195,7 +195,7 @@
 			
 			
 			// Current version
-			private const VERSION:String = "2.03";
+			private const VERSION:String = "2.04";
 			
 			
 			// The current selected tree item target
@@ -224,17 +224,26 @@
 			private var zipExpandPath:String;
 			
 			
-			// Toggle states
+			// Toggle states and preferences
 			private var showApp:Boolean = true;
 			private var showTraces:Boolean = true;
 			private var showMonitor:Boolean = true;
+			private var showTree:Boolean = true;
+			private var showDisplaytree:Boolean = false;
 			private var uiAppHeight:Number = 66.66;
 			private var uiTracesHeight:Number = 33.33;
 			private var uiMonitorHeight:Number = 90;
 			private var uiInspectorWidth:Number = 350;
+			private var uiTreeWidth:Number = 50;
+			private var uiDisplaytreeWidth:Number = 50;
 			private var uiLoaded:Boolean = false;
 			private var dontShowProperties:Boolean = false;
 			private var alwaysOnTop:Boolean = false;
+			private var minimizeToTray:Boolean = false;
+			
+			
+			// Icon loader
+			private var iconLoader:Loader;
 			
 			
 			// Default ticker data
@@ -243,7 +252,7 @@
 			
 			
 			/**
-			 * The app is loading
+			 * The application is loading
 			 */
 			private function init():void
 			{
@@ -268,29 +277,38 @@
 					nativeWindow.y = so.data.windowY;
 					nativeWindow.width = so.data.windowWidth;
 					nativeWindow.height = so.data.windowHeight;
-					showApp = so.data.uiShowApp;
-					showTraces = so.data.uiShowTraces;
-					showMonitor = so.data.uiShowMonitor;
+					showApp = so.data.showApp;
+					showTraces = so.data.showTraces;
+					showMonitor = so.data.showMonitor;
+					showTree = so.data.showTree;
+					showDisplaytree = so.data.showDisplaytree;
 					uiAppHeight = so.data.uiAppHeight;
 					uiTracesHeight = so.data.uiTracesHeight;
 					uiMonitorHeight = so.data.uiMonitorHeight;
 					uiInspectorWidth = so.data.uiInspectorWidth;
+					uiTreeWidth = so.data.uiTreeWidth;
+					uiDisplaytreeWidth = so.data.uiDisplaytreeWidth;
 					dontShowProperties = so.data.dontShowProperties;
 					tickerMessage = so.data.tickerMessage;
 					tickerURL = so.data.tickerURL;
 					alwaysOnTop = so.data.alwaysOnTop;
+					minimizeToTray = so.data.minimizeToTray;
 				}
 				else
 				{
 					// Reset the data and save the default values
 					so.data.version = VERSION;
-					so.data.uiShowApp = showApp;
-					so.data.uiShowTraces = showTraces;
-					so.data.uiShowMonitor = showMonitor;
+					so.data.showApp = showApp;
+					so.data.showTraces = showTraces;
+					so.data.showMonitor = showMonitor;
+					so.data.showTree = showTree;
+					so.data.showDisplaytree = showDisplaytree;
 					so.data.uiAppHeight = uiAppHeight;
 					so.data.uiTracesHeight = uiTracesHeight;
 					so.data.uiMonitorHeight = uiMonitorHeight;
 					so.data.uiInspectorWidth = uiInspectorWidth;
+					so.data.uiTreeWidth = uiTreeWidth;
+					so.data.uiDisplaytreeWidth = uiDisplaytreeWidth;
 					so.data.dontShowProperties = dontShowProperties;
 					so.data.windowX = nativeWindow.x;
 					so.data.windowY = nativeWindow.y;
@@ -300,16 +318,18 @@
 					so.data.tickerMessage = tickerMessage;
 					so.data.tickerURL = tickerURL;
 					so.data.alwaysOnTop = alwaysOnTop;
+					so.data.minimizeToTray = minimizeToTray;
 					so.data.saved = true;
 				}
 				
 				// Setup exiting event listeners so we can save the preferences on exit
 				nativeWindow.addEventListener(Event.CLOSING, closingApplication);
+				nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGING, stateChangeWindow);
 			}
 			
 			
 			/**
-			 * The app is done loading
+			 * The application is done loading
 			 */
 			private function creationComplete():void
 			{
@@ -331,9 +351,6 @@
 				nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGE, updateInterface);
 				nativeWindow.addEventListener(NativeWindowBoundsEvent.RESIZING, resizeInterface);
 				nativeWindow.addEventListener(NativeWindowBoundsEvent.RESIZE, resizeInterface);
-				
-				// Set the inspector width
-				inspectorCanvas.width = uiInspectorWidth;
 				
 				// Show the window
 				nativeWindow.activate();
@@ -461,7 +478,18 @@
 					var edit:Boolean;
 					var runnable:Boolean;
 					var parameters:XMLList;
-					
+					var targets:XMLList;
+					var target:String = "";
+					var message:String = "";	
+					var date:Date;
+					var hours:String;
+					var minutes:String;
+					var seconds:String;
+					var miliseconds:String;
+					var time:String;
+					var searchTerms:Array
+					var item:Object;
+						
 					// Do the actions
 					switch(command.text)
 					{
@@ -487,6 +515,7 @@
 		       				selectedTarget = null;
 		       				appAll.source = null;
 		       				appFiltered.source = null;
+		       				displayAll.source = null;
 		       				if (propertiesGrid) propertiesGrid.destroyItemEditor();
 							if (functionsGrid) functionsGrid.destroyItemEditor();
 		       				properties.removeAll();
@@ -496,7 +525,7 @@
 						break;
 						
 						
-						// Received the base of the app
+						// Received the root of the app
 						case COMMAND_ROOT:
 		       				selectedTarget = null;
 		       				appAll.source = command.xml.children(); 
@@ -510,12 +539,31 @@
 		       				monitor.reset();
 						break;
 						
+						// Received the display object's root
+						case COMMAND_BASE:
+		       				displayAll.source = command.xml.children();
+		       				displaytree.openItems = command.xml.children();
+						break;
+						
+						// Received a new target for the inspector
+						case COMMAND_INSPECT:
+		       				selectedTarget = null;
+		       				appAll.source = command.xml.children(); 
+		       				appFiltered.source = command.xml.children();
+		       				tree.openItems = command.xml.children();
+		       				filterApplication();
+							if (propertiesGrid) propertiesGrid.destroyItemEditor();
+							if (functionsGrid) functionsGrid.destroyItemEditor();
+		       				properties.removeAll();
+		       				functions.removeAll();
+						break;
+						
 						
 						//Received object data
 						case COMMAND_GET_OBJECT:
 						
 							// Get all targets in the current xml
-							var targets:XMLList = appAll.source..@target;
+							targets = appAll.source..@target;
 							
 							// Loop through the targets
 							for (i = 0; i < targets.length(); i++)
@@ -533,7 +581,26 @@
 						break;
 						
 						
-						//Received properties  data
+						//Received object data
+						case COMMAND_GET_DISPLAYOBJECT:
+						
+							// Get all targets in the current xml
+							targets = displayAll.source..@target;
+							
+							// Loop through the targets
+							for (i = 0; i < targets.length(); i++)
+							{	
+								// If they match then update the xml
+								if (targets[i] == command.xml.node.@target) {
+									targets[i].parent().setChildren(command.xml.node.children());						
+									break;
+								}
+							}
+							
+						break;
+						
+						
+						// Received properties  data
 						case COMMAND_GET_PROPERTIES:
 							
 							// Save the properties
@@ -575,7 +642,7 @@
 						break;
 						
 						
-						//Received functions data
+						// Received functions data
 						case COMMAND_GET_FUNCTIONS:
 							
 							// Save the properties
@@ -643,15 +710,14 @@
 						case COMMAND_TRACE:
 						
 							// Format the time
-							var date:Date 			= command.date;
-							var hours:String 		= (date.getHours() < 10) ? "0" + date.getHours().toString() : date.getHours().toString();
-							var minutes:String 		= (date.getMinutes() < 10) ? "0" + date.getMinutes().toString() : date.getMinutes().toString();
-							var seconds:String 		= (date.getSeconds() < 10) ? "0" + date.getSeconds().toString() : date.getSeconds().toString();
-							var miliseconds:String  = date.getMilliseconds().toString();
-							var time:String 		= hours + ":" + minutes + ":" + seconds + "." + miliseconds;
+							date 		= command.date;
+							hours 		= (date.getHours() < 10) ? "0" + date.getHours().toString() : date.getHours().toString();
+							minutes 	= (date.getMinutes() < 10) ? "0" + date.getMinutes().toString() : date.getMinutes().toString();
+							seconds 	= (date.getSeconds() < 10) ? "0" + date.getSeconds().toString() : date.getSeconds().toString();
+							miliseconds	= date.getMilliseconds().toString();
+							time 		= hours + ":" + minutes + ":" + seconds + "." + miliseconds;
 							
 							// Create the message
-							var message:String = "";
 							if (command.xml.children()[0].children().length() == 0) {
 								message = stripBreaks(htmlUnescape(command.xml.children()[0].@label));
 							} else {
@@ -659,7 +725,7 @@
 							}
 							
 							// Save the item
-							var item:Object = {
+							item = {
 								line:		tracesAll.length + 1, 
 								time:		time, 
 								target:		command.target, 
@@ -673,16 +739,7 @@
 							tracesAll.addItem(item);
 							
 							// Get the search terms from the input field
-							var text:String = tracesFilterField.text.toLowerCase();
-							var temp:Array = text.split("+");
-							var searchTerms:Array = new Array();
-							var searchString:String = "";
-							for (i = 0; i < temp.length; i++) {
-								searchString = StringUtil.trim(temp[i]).toLowerCase();
-								if (searchString != "") {
-									searchTerms.push(searchString);
-								}
-							}
+							searchTerms = filterTracesSearchTerms();
 							
 							// Check if a filter term is given
 							if (searchTerms.join("") == "")
@@ -693,14 +750,9 @@
 							else
 							{
 								// Compare strings!
-								var target:String = command.target.toLowerCase();
-								var add:Boolean = true;				
-								for (n = 0; n < searchTerms.length; n++) {
-									if (target.indexOf(searchTerms[n]) == -1 && message.indexOf(searchTerms[n]) == -1 ) {
-										add = false;
-									}
-								}
-								if (add) {
+								target = item.target.toLowerCase();
+								message = item.message.toLowerCase();
+								if (filterTracesCheck(target, searchTerms) || filterTracesCheck(message, searchTerms)) {
 									tracesFiltered.addItem(item);
 								}
 							}
@@ -710,6 +762,64 @@
 							
 						break;
 						
+						
+						// Received a snapshot
+						case COMMAND_SNAPSHOT:
+						
+							// Format the time
+							date 		= command.date;
+							hours 		= (date.getHours() < 10) ? "0" + date.getHours().toString() : date.getHours().toString();
+							minutes 	= (date.getMinutes() < 10) ? "0" + date.getMinutes().toString() : date.getMinutes().toString();
+							seconds 	= (date.getSeconds() < 10) ? "0" + date.getSeconds().toString() : date.getSeconds().toString();
+							miliseconds	= date.getMilliseconds().toString();
+							time 		= hours + ":" + minutes + ":" + seconds + "." + miliseconds;
+							
+							// Read the bitmap
+							var bitmapData:BitmapData = new BitmapData(command.width, command.height);
+							bitmapData.setPixels(new Rectangle(0, 0, command.width, command.height), command.bytes);
+							
+							// Save the item
+							item = {
+								line:		tracesAll.length + 1, 
+								time:		time, 
+								target:		command.target, 
+								color:		command.color, 
+								width:		command.width, 
+								height:		command.height, 
+								bitmapData:	bitmapData, 
+								message: 	"Snapshot", 
+								xml: 		null,
+								date:		date
+							};
+							
+							// Add the item to the array
+							tracesAll.addItem(item);
+							
+							// Get the search terms from the input field
+							searchTerms = filterTracesSearchTerms();
+							
+							// Check if a filter term is given
+							if (searchTerms.join("") == "")
+							{
+								// No, so just add the item
+								tracesFiltered.addItem(item);
+							} 
+							else
+							{
+								// Compare strings!
+								target = item.target.toLowerCase();
+								message = item.message.toLowerCase();
+								if (filterTracesCheck(target, searchTerms) || filterTracesCheck(message, searchTerms)) {
+									tracesFiltered.addItem(item);
+								}
+							}
+							
+							// Clear the item
+							item = null;				
+							
+						break;
+						
+						
 						// Received new FPS and menory values
 						case COMMAND_MONITOR:
 							var monitorDATE:Date = command.date;
@@ -718,6 +828,7 @@
 							var monitorMEM:uint = command.memory;
 							monitor.addData(monitorDATE, monitorTIME, monitorFPS, monitorMEM);
 						break;
+						
 						
 						// Received a clear traces
 						case COMMAND_CLEAR_TRACES:
@@ -758,22 +869,11 @@
 				
 				// Var needed for the loop
 				var i:int = 0;
-				var n:int = 0;
 				var target:String = "";
 				var message:String = "";
-				var add:Boolean = true;
 				
 				// Get the search terms from the input field
-				var text:String = tracesFilterField.text.toLowerCase();
-				var temp:Array = text.split("+");
-				var searchTerms:Array = new Array();
-				var searchString:String = "";
-				for (i = 0; i < temp.length; i++) {
-					searchString = StringUtil.trim(temp[i]).toLowerCase();
-					if (searchString != "") {
-						searchTerms.push(searchString);
-					}
-				}
+				var searchTerms:Array = filterTracesSearchTerms();
 						
 				// Check if a filter term is given
 				if (searchTerms.join("") == "")
@@ -791,21 +891,47 @@
 						// Get the data and lowercase it
 						target = tracesAll[i].target.toLowerCase();
 						message = tracesAll[i].message.toLowerCase();
-						add = true;
-						
-						// Loop through the search terms and compare strings
-						for (n = 0; n < searchTerms.length; n++) {
-							if (target.indexOf(searchTerms[n]) == -1 && message.indexOf(searchTerms[n]) == -1) {
-								add = false;
-							}
-						}
-						
+	
 						// Add if needed
-						if (add) {
+						if (filterTracesCheck(target, searchTerms) || filterTracesCheck(message, searchTerms)) {
 							tracesFiltered.addItem(tracesAll[i]);
 						}
 					}
 				}
+			}
+			
+			
+			/**
+			 * Get the search terms from the input field
+			 */
+			private function filterTracesSearchTerms():Array
+			{
+				var text:String = tracesFilterField.text.toLowerCase();
+				var temp:Array = text.split("+");
+				var searchTerms:Array = new Array();
+				var searchString:String = "";
+				for (var i:int = 0; i < temp.length; i++) {
+					searchString = StringUtil.trim(temp[i]);
+					if (searchString != "") {
+						searchTerms.push(searchString);
+					}
+				}
+				return searchTerms;
+			}
+			
+			
+			/**
+			 * Loop through the search terms and compare strings
+			 */
+			private function filterTracesCheck(s:String, searchTerms:Array):Boolean
+			{
+				var add:Boolean = true;
+				for (var i:int = 0; i < searchTerms.length; i++) {
+					if (s.indexOf(searchTerms[i]) == -1) {
+						add = false;
+					}
+				}
+				return add;
 			}
 			
 			
@@ -855,6 +981,39 @@
 	   				// Update all objects	
 					for (var n:int = 0; n < targets.length; n++) {
 						send({text:COMMAND_GET_OBJECT, target:targets[n], functions:false});
+					}
+				}
+			}
+			
+			
+			/**
+			 * Reload the display tree
+			 */
+			private function refreshDisplayTree():void
+			{
+				// Check if the tree is loaded
+				if (displaytree.openItems)
+				{
+					// Get the current open targets
+					var open:Array = displaytree.openItems as Array;
+					var targets:Array = new Array();
+					for (var i:int = 0; i < open.length; i++) {
+						targets.push(String(open[i].@target));
+					}
+					
+					// Sort the targets
+					targets = targets.sort();
+					
+					// Clear the data
+					selectedTarget = null;
+					if (propertiesGrid) propertiesGrid.destroyItemEditor();
+					if (functionsGrid) functionsGrid.destroyItemEditor();
+	   				properties.removeAll();
+	   				functions.removeAll();
+	   				
+	   				// Update all objects	
+					for (var n:int = 0; n < targets.length; n++) {
+						send({text:COMMAND_GET_DISPLAYOBJECT, target:targets[n], functions:false});
 					}
 				}
 			}
@@ -969,16 +1128,20 @@
 					
 					// Add the node if needed
 					if (add) {
-						if (children[i].children().length() > 0) {
+						if (children[i].children().length() > 0)
+						{
 							// The node has children
 							temp = children[i];
 							temp.setChildren(filterChildren(temp.children(), searchTerms));
-							if (temp.children().length() == 0) {
+							if (temp.children().length() == 0)
+							{
 								// The node has just one property
 								temp.setChildren(XML("<node icon='iconWarning' type='Warning' label='No filter results' name='No filter results'/>"));
 							}
 							xml += temp;
-						} else {
+						}
+						else
+						{
 							// The node is just one value
 							if (!dontShowProperties) {
 								xml += children[i];
@@ -1014,6 +1177,19 @@
 							zipExpandPath = clientFile.nativePath;
 							zipFileExpand("client");
 						});
+					}
+					else if (item.message == "Snapshot" && item.xml == null)
+					{
+						// Create the window
+						var snapshotWindow:SnapshotWindow = new SnapshotWindow();
+						snapshotWindow.setData(item);
+						snapshotWindow.open();
+						centerWindow(snapshotWindow);
+						windows.push(snapshotWindow);
+						if (alwaysOnTop) {
+							snapshotWindow.orderToFront();
+							snapshotWindow.alwaysInFront = true;
+						}
 					}
 					else
 					{
@@ -1051,9 +1227,17 @@
 			/**
 			 * An item in the app tree has been clicked
 			 * @param event: Basic event
+			 * @param target: live or tree
 			 */	
-			private function treeClick(event:Event):void
+			private function treeClick(event:Event, target:String = "live"):void
 			{
+				// Remove selection
+				if (target.toLowerCase() == "live") {
+					displaytree.selectedIndex = -1;
+				} else {
+					tree.selectedIndex = -1;
+				}
+				
 				// Check if the target is still there
 				if (event.currentTarget.selectedItem != null)
 				{
@@ -1083,14 +1267,19 @@
 			/**
 			 * An item in the tree is open
 			 * @param event: Basic event
+			 * @param target: live or tree
 			 */	
-			private function treeOpen(event:TreeEvent):void
+			private function treeOpen(event:TreeEvent, target:String = "live"):void
 			{
 				// Check if a new target is opened
 				if (event.item.@target != null)
 				{
 					// Send the command
-					send({text:COMMAND_GET_OBJECT, target:String(event.item.@target), functions:false});
+					if (target.toLowerCase() == "live") {
+						send({text:COMMAND_GET_OBJECT, target:String(event.item.@target), functions:false});
+					} else {
+						send({text:COMMAND_GET_DISPLAYOBJECT, target:String(event.item.@target), functions:false});
+					}
 				}
 			}
 			
@@ -1244,13 +1433,108 @@
 			
 			
 			/**
+			 * Check if the users minimizes the app
+			 */ 
+			private function stateChangeWindow(event:NativeWindowDisplayStateEvent):void
+			{
+				if (event.afterDisplayState == NativeWindowDisplayState.MINIMIZED) 
+				{
+					if (minimizeToTray)
+					{
+						// Don't minimize
+						event.preventDefault();
+						
+						// Hide the window
+						nativeWindow.visible = false;
+						
+						// Create a new native menu
+						var menu:NativeMenu = new NativeMenu();
+						var menuOpen:NativeMenuItem = new NativeMenuItem("Open De MonsterDebugger");
+						var menuExit:NativeMenuItem = new NativeMenuItem("Exit");
+						menuOpen.addEventListener(Event.SELECT, trayShow, false, 0, true);
+						menuExit.addEventListener(Event.SELECT, trayExit, false, 0, true);
+						menu.addItem(menuOpen);
+						menu.addItem(new NativeMenuItem("", true));
+						menu.addItem(menuExit);
+			
+						// Init the icon loader
+						iconLoader = new Loader();
+						iconLoader.contentLoaderInfo.addEventListener(Event.COMPLETE, iconLoadComplete, false, 0, true);
+						iconLoader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, iconLoadError, false, 0, true);
+						
+						// Windows
+						if (NativeApplication.supportsSystemTrayIcon)
+						{
+							// Create the system tray icon
+							var sysTrayIcon:SystemTrayIcon = NativeApplication.nativeApplication.icon as SystemTrayIcon;
+							sysTrayIcon.tooltip = "MonsterDebugger";
+							sysTrayIcon.menu = menu;
+							sysTrayIcon.addEventListener(ScreenMouseEvent.CLICK, trayShow);
+							
+							// Load the icon
+							iconLoader.load(new URLRequest("icon/icon_16.png"));
+						}
+					}
+				}
+			}
+			
+			
+			/**
+			 * Show the window
+			 */
+			private function trayShow(event:Event):void
+			{
+				nativeWindow.visible = true;
+				NativeApplication.nativeApplication.icon.bitmaps = [];
+			}
+			
+			
+			/**
+			 * Close the app
+			 */
+			private function trayExit(event:Event):void
+			{
+				NativeApplication.nativeApplication.icon.bitmaps = [];
+				closingApplication();
+				NativeApplication.nativeApplication.exit();
+			}
+			
+			
+			/**
+			 * The icon is loaded
+			 */
+			private function iconLoadComplete(event:Event):void
+			{
+				// Set the loaded image as icon
+				var bitmap:Bitmap = iconLoader.content as Bitmap;
+				NativeApplication.nativeApplication.icon.bitmaps = [bitmap.bitmapData];
+			}
+			
+			
+			/**
+			 * Unable to load the icon
+			 */
+			private function iconLoadError(event:Event):void
+			{
+				// Set a default white square as icon
+				if (NativeApplication.supportsDockIcon) {
+					NativeApplication.nativeApplication.icon.bitmaps = [new BitmapData(128, 128)];
+				}
+				if (NativeApplication.supportsSystemTrayIcon) {
+					NativeApplication.nativeApplication.icon.bitmaps = [new BitmapData(16, 16)];
+				}
+			}
+			
+			
+			/**
 			 * The application is exiting, so save the window preferences
 			 * @param event: Closing event
 			 */ 
 			private function closingApplication(event:Event = null):void
 			{
 				// Save the window preferences
-				if (nativeWindow) {
+				if (nativeWindow)
+				{
 					// Dont save the maximized property on a Mac
 					// Dont save the width and height if the window is minimized
 					// We could save these values on a resize event...
@@ -1263,18 +1547,108 @@
 						so.data.windowWidth = nativeWindow.width;
 						so.data.windowHeight = nativeWindow.height;
 					}
-					so.data.uiShowApp = showApp;
-					so.data.uiShowTraces = showTraces;
-					so.data.uiShowMonitor = showMonitor;
+					so.data.showApp = showApp;
+					so.data.showTraces = showTraces;
+					so.data.showMonitor = showMonitor;
+					so.data.showTree = showTree;
+					so.data.showDisplaytree = showDisplaytree;
 					so.data.uiAppHeight = uiAppHeight;
 					so.data.uiTracesHeight = uiTracesHeight;
 					so.data.uiMonitorHeight = uiMonitorHeight;
 					so.data.uiInspectorWidth = uiInspectorWidth;
+					so.data.uiTreeWidth = uiTreeWidth;
+					so.data.uiDisplaytreeWidth = uiDisplaytreeWidth;
 					so.data.dontShowProperties = dontShowProperties;
 					so.data.alwaysOnTop = alwaysOnTop;
-					so.data.saved = true;
+					so.data.minimizeToTray = minimizeToTray;
+					so.data.saved = true;					
 				}
 			}
+			
+			
+			/**
+			 * Export all trace items in one XML
+			 * @param file: File to export
+			 */
+			private function tracesExport(file:File):void
+			{
+				// Create the XML string
+				var xml:String = '';
+				xml += '<?xml version="1.0" encoding="utf-8"?>' + '\n';
+				xml += '<items>' + '\n';
+				
+				// Loop through the items
+				for (var i:int = 0; i < tracesAll.length; i++) {
+					xml += '<item>' + '\n';
+					xml += '<line>' + tracesAll[i].line + '</line>' + '\n';
+					xml += '<time>' + tracesAll[i].time + '</time>' + '\n';
+					xml += '<target>' + tracesAll[i].target + '</target>' + '\n';
+					xml += '<color>' + tracesAll[i].color + '</color>' + '\n';
+					xml += '<message>' + tracesAll[i].message + '</message>' + '\n';
+					xml += '<timestamp>' + tracesAll[i].date.time + '</timestamp>' + '\n';
+					xml += tracesAll[i].xml + '\n';
+					xml += '</item>' + '\n';
+				}
+				
+				// Close the XML
+				xml += '</items>' + '\n';
+				
+				// Write XML to a file
+				var fileStream:FileStream = new FileStream();
+				fileStream.open(file, FileMode.WRITE);
+				fileStream.writeUTFBytes(new XML(xml).toString());
+				fileStream.close();
+				
+				// Show an alert here
+				var exportedWindow:ExportedWindow = new ExportedWindow();
+				exportedWindow.open();
+				centerWindow(exportedWindow);
+				if (alwaysOnTop) {
+					exportedWindow.orderToFront();
+					exportedWindow.alwaysInFront = true;
+				}
+			}
+			
+			
+			/**
+			 * Load all traces from a XML
+			 * @param file: File to load
+			 */
+			private function tracesLoad(file:File):void
+			{
+				// Read the file
+				var fileStream:FileStream = new FileStream();
+				fileStream.open(file, FileMode.READ);
+				var xml:XML = new XML(fileStream.readUTFBytes(fileStream.bytesAvailable));
+				fileStream.close();
+				
+				// Clear the old traces
+				tracesAll.removeAll();
+				tracesFiltered.removeAll();
+				
+				// Load the traces from XML
+				for (var i:int = 0; i < xml.item.length(); i++)
+				{
+					var item:Object = {
+						line:		xml.item[i].line, 
+						time:		xml.item[i].time, 
+						target:		xml.item[i].target, 
+						color:		xml.item[i].color,
+						message: 	xml.item[i].message, 
+						xml: 		new XML(xml.item[i].root),
+						date:		new Date(xml.item[i].timestamp)
+					};
+					
+					//Add the item
+					tracesAll.addItem(item);
+					
+					// Clear the item
+					item = null;	
+				}
+				
+				// Filter the new traces
+				filterTraces();
+			}			
 			
 			
 			/**
@@ -1372,6 +1746,76 @@
 			
 			
 			/**
+			 * Add resize event listeners to the vbox
+			 */
+			private function addResizeListeners():void
+			{
+				appCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+				treeCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+				// displaytreeCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+				// tracesCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+			}
+			
+			
+			/**
+			 * Remove resize event listeners to the vbox
+			 */
+			private function removeResizeListeners():void
+			{
+				appCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+				treeCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+				displaytreeCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+				tracesCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
+			}
+			
+			
+			/**
+			 * Save the panel sizes (relative)
+			 * @param event: Reize event from the canvas
+			 */
+			private function saveCanvasSize(event:ResizeEvent):void
+			{
+				var total:Number;
+				
+				// Calculate height
+				if (uiLoaded && showTraces && showApp && tracesCanvas.visible && appCanvas.visible){
+					total = appCanvas.height + tracesCanvas.height;
+					uiAppHeight = 100 / (total / appCanvas.height);
+					uiTracesHeight = 100 / (total / tracesCanvas.height);
+				}
+				
+				// Save inspector width
+				uiInspectorWidth = inspectorCanvas.width;
+				
+				// Calculate width
+				if (uiLoaded && showApp && showDisplaytree && treeCanvas.visible && displaytreeCanvas.visible) {
+					total = treeCanvas.width + displaytreeCanvas.width;
+					uiTreeWidth = 100 / (total / treeCanvas.width);
+					uiDisplaytreeWidth = 100 / (total / displaytreeCanvas.width);
+				}
+				
+				trace("saveCanvasSize", uiInspectorWidth);
+				
+			}
+			
+				
+			/**
+			 * Resizing the window
+			 * @param event: Optional resize event
+			 */
+			private function resizeInterface(event:NativeWindowBoundsEvent):void
+			{
+				// Remove the event listeners
+				removeResizeListeners();
+				
+				// Update the interface
+				if (uiLoaded) {
+					updateInterface();
+				}
+			}
+			
+			
+			/**
 			 * Return an array containing the key code of the standard
 			 * modifier key for either Mac or Windows
 			 * @param iten: The menu item to modify
@@ -1449,6 +1893,26 @@
 					}
 					break;
 					
+					case "tracesLoad":
+					var tracesLoadFile:File = File.desktopDirectory.resolvePath("traces.xml");
+					tracesLoadFile.browseForOpen("Open Traces", [new FileFilter("XML Traces File", "*.xml")]);
+					tracesLoadFile.addEventListener(Event.SELECT, function(event:Event):void {
+						tracesLoad(tracesLoadFile);
+					});
+					
+					break;
+					case "tracesExport":
+					var tracesExportFile:File = File.desktopDirectory.resolvePath("traces.xml");
+					tracesExportFile.browseForSave("Export Traces");
+					tracesExportFile.addEventListener(Event.SELECT, function(event:Event):void {
+						tracesExport(tracesExportFile);
+					});
+					break;
+					
+					case "gotandlearn":
+					navigateToURL(new URLRequest("http://www.gotoandlearn.com/play?id=109"));
+					break
+					
 					case "website":
 					navigateToURL(new URLRequest("http://www.demonsterdebugger.com"));
 					break
@@ -1490,7 +1954,6 @@
 					break;
 					
 					case "showProperties":
-					applicationMenu.menu[1].menuitem[3].@toggled = true;
 					applicationMenu.menu[1].menuitem[4].@toggled = false;
 					viewstack.selectedChild = propertiesCanvas;
 					break;
@@ -1529,20 +1992,23 @@
 					break;
 					
 					case "showApp":
-					showApp = true;
-					showTraces = false;
+					showApp = !showApp;
+					if (!showApp && !showDisplaytree) {
+						showTraces = true;
+					}
+					updateInterface();
+					break;
+
+					case "showDisplaytree":
+					showDisplaytree = !showDisplaytree;
+					if (!showApp && !showDisplaytree) {
+						showTraces = true;
+					}
 					updateInterface();
 					break;
 					
 					case "showTraces":
-					showApp = false;
-					showTraces = true;
-					updateInterface();
-					break;
-					
-					case "showBoth":
-					showApp = true;
-					showTraces = true;
+					showTraces = !showTraces;
 					updateInterface();
 					break;
 					
@@ -1561,57 +2027,12 @@
 					}
 					updateInterface();
 					break;
-				}	
-			}
-			
-			
-			/**
-			 * Add resize event listeners to the vbox
-			 */
-			private function addResizeListeners():void
-			{
-				appCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-				tracesCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-			}
-			
-			
-			/**
-			 * Remove resize event listeners to the vbox
-			 */
-			private function removeResizeListeners():void
-			{
-				appCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-				tracesCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-			}
-			
-			
-			/**
-			 * Save the panel sizes (relative)
-			 * @param event: Reize event from the canvas
-			 */
-			private function saveCanvasSize(event:ResizeEvent):void
-			{
-				if (uiLoaded && showTraces && showApp && tracesCanvas.visible && appCanvas.visible){
-					var total:Number = appCanvas.height + tracesCanvas.height;
-					uiAppHeight = 100 / (total / appCanvas.height);
-					uiTracesHeight = 100 / (total / tracesCanvas.height);
-				}
-			}
-			
-			
-			/**
-			 * Resizing the window
-			 * @param event: Optional resize event
-			 */
-			private function resizeInterface(event:NativeWindowBoundsEvent):void
-			{
-				// Remove the event listeners
-				removeResizeListeners();
-				
-				// Update the interface
-				if (uiLoaded) {
+					
+					case "minimizeToTray":
+					minimizeToTray =! minimizeToTray;
 					updateInterface();
-				}
+					break;
+				}	
 			}
 			
 					
@@ -1629,18 +2050,95 @@
 				applicationMenu.menu[1].menuitem[6].@enabled = true;
 				applicationMenu.menu[1].menuitem[8].@enabled = true;
 				applicationMenu.menu[1].menuitem[9].@enabled = true;
-				applicationMenu.menu[1].menuitem[11].@enabled = true;
+				applicationMenu.menu[1].menuitem[10].@enabled = true;
 				applicationMenu.menu[1].menuitem[12].@enabled = true;
+				applicationMenu.menu[1].menuitem[13].@enabled = true;
 				
 				// Set monitor
 				monitorCanvas.visible = showMonitor;
 				monitorCanvas.height = (showMonitor)? 90 : -2;
-					
+				
 				// Save the effective UI height
 				var uiHeight:Number = height - advertisement.height - monitorCanvas.height - 6;
+				var uiWidth:Number = width - uiInspectorWidth - 6;
 				
-				// Show both
-				if (showTraces && showApp)
+				// Set the inspector width
+				inspectorCanvas.width = uiInspectorWidth;
+				inspectorCanvas.minWidth = 200;
+								
+				// Show live app and display tree
+				if (showApp && showDisplaytree)
+				{
+					// Live canvas
+					treeCanvas.visible = true;
+					treeCanvas.minWidth = 200;
+					treeCanvas.maxWidth = 10000;
+					treeCanvas.width = Math.round((uiWidth / 100) * uiTreeWidth);
+					
+					// Display tree canvas
+					displaytreeCanvas.visible = true;
+					displaytreeCanvas.minWidth = 200;
+					displaytreeCanvas.maxWidth = 10000;
+					displaytreeCanvas.width = Math.round((uiWidth / 100) * uiDisplaytreeWidth);
+					
+					// Enable / disable menu items
+					applicationMenu.menu[1].menuitem[9].@enabled = true;
+					applicationMenu.menu[1].menuitem[10].@enabled = true;
+				}
+				
+				// Show live app
+				if (showApp && !showDisplaytree)
+				{
+					// Live canvas
+					treeCanvas.visible = true;
+					treeCanvas.minWidth = 200;
+					treeCanvas.maxWidth = 10000;
+					treeCanvas.width = uiWidth;
+					
+					// Display tree canvas
+					displaytreeCanvas.visible = false;
+					displaytreeCanvas.minWidth = -2;
+					displaytreeCanvas.maxWidth  = -2;
+					displaytreeCanvas.width = -2;
+					
+					// Enable / disable menu items
+					applicationMenu.menu[1].menuitem[9].@enabled = true;
+					applicationMenu.menu[1].menuitem[10].@enabled = false;
+				}
+				
+				// Show display tree
+				if (!showApp && showDisplaytree)
+				{
+					// Live canvas
+					treeCanvas.visible = false;
+					treeCanvas.minWidth = -2;
+					treeCanvas.maxWidth  = -2;
+					treeCanvas.width = -2;
+					
+					// Display tree canvas
+					displaytreeCanvas.visible = true;
+					displaytreeCanvas.minWidth = 200;
+					displaytreeCanvas.maxWidth = 10000;
+					displaytreeCanvas.width = uiWidth;
+					
+					// Enable / disable menu items
+					applicationMenu.menu[1].menuitem[9].@enabled = false;
+					applicationMenu.menu[1].menuitem[10].@enabled = true;
+				}
+				
+				// Show or hide the filter field
+				appFilterField.visible = true;
+				appFilterLabel.visible = true;
+				if (treeCanvas.width < 320) {
+					appFilterField.visible = false;
+					appFilterLabel.visible = false;
+				} else if (treeCanvas.width < 360) {
+					appFilterField.visible = true;
+					appFilterLabel.visible = false;
+				}
+				
+				// Show traces and one of the two inspectors
+				if (showTraces && (showApp || showDisplaytree))
 				{
 					// Save the height
 					var appCanvasHeight:int = Math.round((uiHeight / 100) * uiAppHeight);
@@ -1671,8 +2169,8 @@
 					tracesCanvas.height = tracesCanvasHeight;
 				}
 				
-				// Show application only
-				if (!showTraces && showApp)
+				// Show one of the two inspectors only
+				if (!showTraces && (showApp || showDisplaytree))
 				{
 					// Application canvas
 					appCanvas.visible = true;
@@ -1688,11 +2186,11 @@
 
 					// Enable / disable the menus
 					applicationMenu.menu[1].menuitem[1].@enabled = false;
-					applicationMenu.menu[1].menuitem[12].@enabled = false;
+					applicationMenu.menu[1].menuitem[13].@enabled = false;
 				}
 				
 				// Show traces only
-				if (showTraces && !showApp)
+				if (showTraces && (!showApp && !showDisplaytree))
 				{
 					// Application canvas
 					appCanvas.visible = false;
@@ -1713,15 +2211,24 @@
 					applicationMenu.menu[1].menuitem[6].@enabled = false;
 					applicationMenu.menu[1].menuitem[8].@enabled = false;
 					applicationMenu.menu[1].menuitem[9].@enabled = false;
+					applicationMenu.menu[1].menuitem[10].@enabled = false;
 				}
 				
 				// Set the menu options
 				applicationMenu.menu[1].menuitem[6].@toggled = dontShowProperties;
-				applicationMenu.menu[2].menuitem[0].@toggled = (showApp && !showTraces)? true : false;
-				applicationMenu.menu[2].menuitem[1].@toggled = (!showApp && showTraces)? true : false;
-				applicationMenu.menu[2].menuitem[2].@toggled = (showApp && showTraces)? true : false;
-				applicationMenu.menu[2].menuitem[4].@toggled = showMonitor;
-				applicationMenu.menu[2].menuitem[6].@toggled = alwaysOnTop;
+				applicationMenu.menu[2].menuitem[0].@toggled = showApp;
+				applicationMenu.menu[2].menuitem[1].@toggled = showDisplaytree;
+				applicationMenu.menu[2].menuitem[2].@toggled = showTraces;
+				applicationMenu.menu[2].menuitem[2].@enabled = (showApp || showDisplaytree);
+				applicationMenu.menu[2].menuitem[3].@toggled = showMonitor;
+				applicationMenu.menu[2].menuitem[5].@toggled = alwaysOnTop;
+				
+				if (NativeApplication.supportsSystemTrayIcon) {
+					applicationMenu.menu[2].menuitem[6].@toggled = minimizeToTray;
+				} else {
+					applicationMenu.menu[2].menuitem[6].@enabled = false;
+					applicationMenu.menu[2].menuitem[6].@toggled = false;
+				}
 				
 				// Set the loaded flag
 				uiLoaded = true;
@@ -1793,7 +2300,7 @@
 						s = s.replace("\"", "&quot;");
 					}
 	                var xml:XML = <a>{s}</a>;
-	                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)/g, "");
+	                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)|(^<a\/>$)/g, "");
 				} else {
 					return "";
 				}
@@ -1850,17 +2357,34 @@
 			
 		]]>	
 	</mx:Script>
-	
-	
+
+
+
+	<!-- 
+	***************************************************************
+	* Ticker data loader
+	***************************************************************
+	-->
+
 	<mx:HTTPService id="tickerData" url="{PATH_TICKER}" resultFormat="e4x" result="tickerDataHandler(event)" fault="tickerErrorHandler(event)"/>
-    
-    
+
+
+
+	<!-- 
+	***************************************************************
+	* Menu items XML
+	***************************************************************
+	-->
+	
 	<mx:XML id="applicationMenu" format="e4x">
 		<menubar>
 			<menu label="File" mnemonic="0">
 				<menuitem label="Export Client Class" command="client" mnemonic="7"/>
 				<menuitem label="Export Example" command="example" mnemonic="7"/>
 				<menuitem label="Export FDT Templates" command="templates" mnemonic="7"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="Export Traces" command="tracesExport" mnemonic="7"/>
+				<menuitem label="Load Traces" command="tracesLoad" mnemonic="0"/>
 				<menuitem label="" type="separator"/>
 				<menuitem label="Exit" command="exit" key="q" mnemonic="1"/>
 			</menu>
@@ -1873,20 +2397,21 @@
 				<menuitem label="" type="separator"/>
 				<menuitem label="Don't Show Single Properties" type="check" toggled="false" command="dontShowProperties" key="o" mnemonic="0"/>
 				<menuitem label="" type="separator"/>
-				<menuitem label="Refresh Inspector" command="refreshInspector" key="r" mnemonic="9"/>
-				<menuitem label="Refresh Live Application" command="refreshApplication" key="R" mnemonic="9"/>
+				<menuitem label="Refresh Inspector" command="refreshInspector" mnemonic="9"/>
+				<menuitem label="Refresh Live Application" command="refreshApplication" mnemonic="9"/>
+				<menuitem label="Refresh Display Tree" command="refreshDisplayTree" mnemonic="9"/>
 				<menuitem label="" type="separator"/>
 				<menuitem label="Clear Highlight" command="clearHighlight" key="i" mnemonic="6"/>
 				<menuitem label="Clear Traces" command="clearTraces" key="x" mnemonic="0"/>
 			</menu>
 			<menu label="Window" mnemonic="0">
-				<menuitem label="Show Live Application" type="check" toggled="false" command="showApp" key="3" mnemonic="5"/>
-				<menuitem label="Show Traces" type="check" toggled="false" command="showTraces" key="2" mnemonic="5"/>
-				<menuitem label="Show Both" type="check" toggled="false" command="showBoth" key="1" mnemonic="5"/>
-				<menuitem label="" type="separator"/>
+				<menuitem label="Show Live Application" type="check" toggled="true" command="showApp" key="1" mnemonic="5"/>
+				<menuitem label="Show Display Tree" type="check" toggled="false" command="showDisplaytree" key="2" mnemonic="5"/>
+				<menuitem label="Show Traces" type="check" toggled="false" command="showTraces" key="3" mnemonic="5"/>
 				<menuitem label="Show Monitor" type="check" toggled="false" command="showMonitor" key="4" mnemonic="5"/>
 				<menuitem label="" type="separator"/>
 				<menuitem label="Always on top" type="check" toggled="false" command="alwaysOnTop" mnemonic="0"/>
+				<menuitem label="Minimize to tray" type="check" toggled="false" command="minimizeToTray" mnemonic="1"/>
 			</menu>
 			<menu label="Help" mnemonic="0">
 				<menuitem label="Help" command="help" mnemonic="0"/>
@@ -1898,36 +2423,55 @@
 				<menuitem label="Adobe Flash RIA Guide (PDF)" command="as3ria" mnemonic="6"/>
 				<menuitem label="Adobe Flash Players" command="as3player" mnemonic="18"/>
 				<menuitem label="" type="separator"/>
+				<menuitem label="Video tutorial (Gotoandlearn.com)" command="gotandlearn" mnemonic="0"/>
+				<menuitem label="" type="separator"/>
 				<menuitem label="About" command="about" mnemonic="0"/>
 				<menuitem label="Product Website" command="website" mnemonic="8"/>
 				<menuitem label="Feedback" command="feedback" mnemonic="4"/>
 			</menu>
 		</menubar>
 	</mx:XML>
-	
-	
+
+
+
+	<!-- 
+	***************************************************************
+	* The actual menu
+	***************************************************************
+	-->
 	<mx:FlexNativeMenu id="nativeMenu" dataProvider="{applicationMenu}" labelField="@label" keyEquivalentField="@key" mnemonicIndexField="@mnemonic" keyEquivalentModifiersFunction="standardOSModifier" showRoot="false" itemClick="nativeMenuCommand(event)"/>
-	
-	
+
+
+
+	<!-- 
+	***************************************************************
+	* Interface
+	***************************************************************
+	-->
 	<mx:VBox x="0" y="1" width="100%" height="100%" horizontalGap="2" verticalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off">
 		<mx:VDividedBox width="100%" height="100%" minHeight="0" horizontalGap="2" verticalGap="2" liveDragging="true" mouseDown="addResizeListeners()" mouseUp="removeResizeListeners()" horizontalScrollPolicy="off" verticalScrollPolicy="off">
 			<mx:Canvas id="appCanvas" width="100%" height="100%">
 				<mx:HDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true" horizontalScrollPolicy="off" verticalScrollPolicy="off">
-					<mx:Canvas width="100%" height="100%" minWidth="400">
+					<mx:Canvas id="treeCanvas" width="100%" height="100%" minWidth="200">
 						<mx:Panel width="100%" height="100%"/>
 						<mx:Label text="LIVE APPLICATION" fontWeight="bold" x="10" y="8" fontSize="11"/>
-						<mx:Label text="Filter" y="8" right="188"/>
+						<mx:Label id="appFilterLabel" text="Filter" y="8" right="188"/>
 						<mx:TextInput id="appFilterField" height="20" change="filterApplication()" y="6" right="20" width="160"/>			
-						<mx:Tree id="tree" dataProvider="{appFiltered}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" itemOpen="treeOpen(event)" click="treeClick(event)" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
+						<mx:Tree id="tree" dataProvider="{appFiltered}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" itemOpen="treeOpen(event, 'live')" click="treeClick(event, 'live')" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
 					</mx:Canvas>
-					<mx:Canvas id="inspectorCanvas" width="350" height="100%">
+					<mx:Canvas id="displaytreeCanvas" width="100%" height="100%" minWidth="200">
+						<mx:Panel width="100%" height="100%"/>
+						<mx:Label text="DISPLAY TREE" fontWeight="bold" x="10" y="8" fontSize="11"/>		
+						<mx:Tree id="displaytree" dataProvider="{displayAll}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" itemOpen="treeOpen(event, 'tree')" click="treeClick(event, 'tree')" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
+					</mx:Canvas>
+					<mx:Canvas id="inspectorCanvas" width="350" height="100%" minWidth="200">
 						<mx:Panel width="100%" height="100%"/>
 						<mx:Label text="INSPECTOR" fontWeight="bold" fontSize="11" x="10" y="8"/>
 						<mx:Image y="32" source="skin/assets/TabBar-background.png" left="5" right="5" scaleContent="false" height="18"/>
 						<mx:TabBar dataProvider="{viewstack}" itemClick="inspectorSwitch()" x="5" y="32" height="18" toolTip=""/>
 						<mx:ViewStack id="viewstack" left="5" top="50" right="5" bottom="5">
 							<mx:Canvas id="propertiesCanvas" label="PROPERTIES" width="100%" height="100%">
-								<mx:DataGrid id="propertiesGrid" dataProvider="{properties}" editable="true" left="0" top="0" right="0" bottom="0">
+								<mx:DataGrid id="propertiesGrid" variableRowHeight="true" dataProvider="{properties}" editable="true" left="0" top="0" right="0" bottom="0">
 									<mx:columns>
 										<mx:DataGridColumn headerText="Name" dataField="name" editable="false">
 											<mx:itemRenderer>
@@ -1939,7 +2483,7 @@
 												</mx:Component>
 											</mx:itemRenderer>
 										</mx:DataGridColumn>
-										<mx:DataGridColumn headerText="Value" dataField="value" editable="true" itemEditor="components.PropertyEditor" editorDataField="newValue"/>
+										<mx:DataGridColumn headerText="Value" wordWrap="true" dataField="value" editable="true" itemEditor="components.PropertyEditor" editorDataField="newValue"/>
 									</mx:columns>
 								</mx:DataGrid>
 							</mx:Canvas>

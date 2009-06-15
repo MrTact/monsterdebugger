@@ -6,8 +6,6 @@
 
 			
 			// Import classes
-			import mx.events.MenuEvent;
-			import mx.events.FlexNativeMenuEvent;
 			import mx.collections.XMLListCollection;
 			
 			
@@ -59,6 +57,13 @@
 			 */
 			private function creationComplete():void
 			{
+				// Add event listener to the stage
+				stage.addEventListener(KeyboardEvent.KEY_UP, function(event:KeyboardEvent):void {
+					if (event.charCode == 27) {
+						close(); // The users pressed ESC
+					}
+				});
+				
 				// Hide by default
 				textArea.visible = false;
 				tree.visible = false;
@@ -97,12 +102,12 @@
 						s = s.replace("\"", "&quot;");
 					}
 	                var xml:XML = <a>{s}</a>;
-	                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)/g, "");
+	                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)|(^<a\/>$)/g, "");
 				} else {
 					return "";
 				}
 			}
-				
+			
 			
 			/**
 			 * Converts HTML characters to regular characters
@@ -125,7 +130,7 @@
 	
 	<mx:Panel width="100%" height="100%"/>
 	<mx:Label text="TRACE DETAILS" fontWeight="bold" x="10" y="8" fontSize="11"/>
-	<mx:TextArea id="textArea" visible="false" top="30" left="3" right="3" bottom="3"/>
+	<mx:TextArea id="textArea" visible="false" top="30" left="3" right="3" bottom="3" selectable="true" editable="false"/>
 	<mx:Tree id="tree" dataProvider="{xml}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" visible="false" top="32" left="5" right="5" bottom="5"/>
 	
 </mx:Window>

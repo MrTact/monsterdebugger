@@ -3,7 +3,10 @@
 
 	<mx:Script>
 		<![CDATA[
-		
+			
+			// Imports
+			import mx.controls.DataGrid;
+			
 		
 			// Private types
 			private const TYPE_BOOLEAN				:String = "Boolean";
@@ -69,8 +72,14 @@
 				
 				// Set the value
 				newValue = value["value"];
+				
+				// Set the height
+				inputString.height = height;
+				inputNumber.height = height;
+				inputInt.height = height;
+				inputUint.height = height;
+				inputBoolean.height = height;
 			}
-			
 			
 		]]>
 	</mx:Script>
@@ -79,7 +88,7 @@
 	
 	<mx:Canvas horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
 		<mx:Label id="inputLabel" color="#000000" width="100%" x="5" y="2"/>
-		<mx:TextInput id="inputString" x="4" paddingLeft="3" paddingRight="3" width="100%" height="22" change="{newValue = String(inputString.text); parentDocument.propertiesUpdate(event)}"/>
+		<mx:TextArea id="inputString" x="4" paddingLeft="3" paddingRight="3" width="100%" height="22" change="{newValue = String(inputString.text); parentDocument.propertiesUpdate(event)}"/>
 		<mx:NumericStepper id="inputNumber" x="4" paddingLeft="3" paddingRight="3" width="100%" height="22" minimum="{-Number.MAX_VALUE}" maximum="{Number.MAX_VALUE}" stepSize="0.01" change="{newValue = Number(inputNumber.value); parentDocument.propertiesUpdate(event)}"/>
 		<mx:NumericStepper id="inputInt" x="4" paddingLeft="3" paddingRight="3" width="100%" height="22" minimum="{-int.MAX_VALUE}" maximum="{int.MAX_VALUE}" stepSize="1" change="{newValue = int(inputNumber.value); parentDocument.propertiesUpdate(event)}"/>
 		<mx:NumericStepper id="inputUint" x="4" paddingLeft="3" paddingRight="3" width="100%" height="22" minimum="0" maximum="{uint.MAX_VALUE}" stepSize="1" change="{newValue = uint(inputNumber.value); parentDocument.propertiesUpdate(event)}"/>

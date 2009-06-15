@@ -15,7 +15,7 @@
 	import nl.demonsters.debugger.MonsterDebugger;
 	
 	
-	public class Main extends Sprite
+	public class Main_CS3 extends Sprite
 	{
 		
 		// De MonsterDebugger instance
@@ -31,19 +31,18 @@
 		public var exampleClass:Person = new Person();
 		public var exampleXML:XML = new XML('<cars><car id="1" color="#FF0000">A nice red car</car><car id="2" color="#FFFF00">A yellow cab</car></cars>');
 		public var exampleXMLList:XMLList = new XMLList('<car id="1" color="#FF0000">A nice red car</car><car id="2" color="#FFFF00">A yellow cab</car>');
-		public var exampleVector:Vector.<String> = new Vector.<String>();
+
 		
-		
-		public function Main()
+		public function Main_CS3()
 		{
-			// Fill the vector
-			exampleVector.push("Apples", "Oranges", "Melons");
-			
 			// Initialize De MonsterDebugger
 			debugger = new MonsterDebugger(this);
 			
 			// Send a trace
 			MonsterDebugger.trace(this, "Hello World!");
+			
+			// Send a snapshot
+			MonsterDebugger.snapshot(this);
 			
 			// Setup the event listeners on the buttons
 			button1.addEventListener(MouseEvent.CLICK, buttonClickHander);
@@ -66,30 +65,30 @@
 				case button1:
 				MonsterDebugger.trace(this, exampleArray);
 				break;
-				
-				// Trace an Vector
-				case button2:
-				MonsterDebugger.trace(this, exampleVector);
-				break;
-				
+
 				// Trace an Object
-				case button3:
+				case button2:
 				MonsterDebugger.trace(this, exampleObject);
 				break;
 				
 				// Trace a XML
-				case button4:
+				case button3:
 				MonsterDebugger.trace(this, exampleXML);
 				break;
 				
-				// Trace an XML List
-				case button5:
-				MonsterDebugger.trace(this, exampleXMLList);
+				// Trace an class
+				case button4:
+				MonsterDebugger.trace(this, exampleClass);
 				break;
 				
-				// Trace an class
+				// Trace in Red color
+				case button5:
+				MonsterDebugger.trace(this, "Trace some text in Red", 0xFF0000);
+				break;
+				
+				// Trace in Green color
 				case button6:
-				MonsterDebugger.trace(this, exampleClass);
+				MonsterDebugger.trace(this, "Trace some text in Green", 0x00FF00);
 				break;
 			}
 		}

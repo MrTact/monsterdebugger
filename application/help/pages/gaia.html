@@ -1,0 +1,105 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title></title>
+		<link rel="stylesheet" href="../style.css" type="text/css" media="screen"/>
+	</head>
+	<body>
+	
+<h2>Gaia Framework</h2>
+Here's a small guide to use De MonsterDebugger with the populair Gaia Framework. 
+Gaia is an open-source front-end Flash Framework for AS3 and AS2 designed to dramatically reduce development time. 
+More information about the Gaia Framework can be found here: http://www.gaiaflashframework.com. 
+De MonsterDebugger can only be used in the AS3 version of the framework. 
+<br/>
+<br/>
+<strong>#1</strong> First, create a basic project. You can find all the information you need in the screencast on the Gaia Framework website.
+Next, initialize De MonsterDebugger in Main.as file. Your basic class should look something like this:<br/>
+<br/>
+<div class="code">
+<pre>	
+package
+{
+	import com.gaiaframework.core.GaiaMain;
+	import flash.display.StageScaleMode;
+	import flash.display.StageAlign;
+	import flash.events.Event;
+	import nl.demonsters.debugger.MonsterDebugger;
+
+	public class Main extends GaiaMain
+	{
+		private var debugger:MonsterDebugger;
+
+		public function Main()
+		{
+			super();
+			debugger = new MonsterDebugger(this);
+			siteXML = "xml/site.xml";
+		}
+		override protected function onAddedToStage(event:Event):void
+		{
+			stage.align = StageAlign.TOP_LEFT;
+			stage.scaleMode = StageScaleMode.NO_SCALE;
+			super.onAddedToStage(event);
+		}
+	}
+}
+</pre>
+</div>
+<br/>
+<strong>#2</strong> By default De MonsterDebugger will only display the properties of the Main class in the Inspector planel. We've created a new function that allows you to switch the target of the Inspector panel:<br/>
+<br/>
+<div class="code">
+<pre>			
+MonsterDebugger.inspect(anotherClass);
+</pre>
+</div>
+<br/>
+<strong>#3</strong> To use this function in your pages, use the following code:<br/>
+<br/>
+<div class="code">
+<pre>	
+package pages
+{
+	import com.gaiaframework.templates.AbstractPage;
+	import com.gaiaframework.events.*;
+	import com.gaiaframework.debug.*;
+	import com.gaiaframework.api.*;
+	import flash.display.*;
+	import flash.events.*;
+	import gs.*;
+	
+	import nl.demonsters.debugger.MonsterDebugger;
+	
+	public class PageTitle extends AbstractPage
+	{	
+		public function PageTitle()
+		{
+			super();
+			alpha = 0;
+			new Scaffold(this);
+		}
+		override public function transitionIn():void 
+		{
+			// Here we switch the target in the inspector panel
+			MonsterDebugger.inspect(this);
+			
+			super.transitionIn();
+			TweenLite.to(this, 0.3, {alpha:1, onComplete:transitionInComplete});
+		}
+		override public function transitionOut():void 
+		{
+			super.transitionOut();
+			TweenLite.to(this, 0.3, {alpha:0, onComplete:transitionOutComplete});
+		}
+	}
+}
+</pre>
+</div>
+<br/>	
+Now, each time you switch pages, the target in the inspector panel will change to the active page.
+<br/>
+<br/>
+<br/>
+	</body>
+</html>
