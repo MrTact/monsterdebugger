@@ -8,6 +8,7 @@
 	// Import classes
 	import flash.display.Sprite;
 	import flash.display.Loader;
+	import flash.display.MovieClip;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
 	import flash.text.TextField;
