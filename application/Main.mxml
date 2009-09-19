@@ -52,6 +52,9 @@
 		
 	<mx:Style source="skin/style.css"/>
 	
+
+	<!-- TODO: Change font size through xml settings -->	
+	
 	
 	<mx:Script>
 		<![CDATA[
@@ -255,7 +258,7 @@
 			 * The application is loading
 			 */
 			private function init():void
-			{
+			{				
 				// Get the preferences
 				so = SharedObject.getLocal("settings");
 				
@@ -539,11 +542,13 @@
 		       				monitor.reset();
 						break;
 						
+						
 						// Received the display object's root
 						case COMMAND_BASE:
 		       				displayAll.source = command.xml.children();
 		       				displaytree.openItems = command.xml.children();
 						break;
+						
 						
 						// Received a new target for the inspector
 						case COMMAND_INSPECT:

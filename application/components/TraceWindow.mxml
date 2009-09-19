@@ -116,9 +116,21 @@
 			public function htmlUnescape(s:String):String
 			{
 				if (s) {
+					
+					// Remove single quotes
+					while(s.indexOf("&apos;") != -1) {
+						s = s.replace("&apos;", "\'");
+					}
+					
+					// Remove double quotes
+					while(s.indexOf("&quot;") != -1) {
+						s = s.replace("&quot;", "\"");
+					}
+					
 					var xml:XML = <a/>;
 					xml.replace(0, s);
 					return String(xml);
+					
 				} else {
 					return "";
 				}
