@@ -12,6 +12,7 @@
 			private var _width:Number = 0;
 			private var _height:Number = 0;	
 			
+			
 			/**
 			 * Set the data in the trace window
 			 * @param item: The object containing all the data

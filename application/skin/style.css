@@ -1,11 +1,3 @@
-AccordionHeader
-{
-	disabledSkin: Embed(source="assets/AccordionHeader_disabledSkin.png");
-	downSkin: Embed(source="assets/AccordionHeader_downSkin.png");
-	overSkin: Embed(source="assets/AccordionHeader_overSkin.png");
-	selectedSkin: Embed(source="assets/AccordionHeader_selectedSkin.png");
-	upSkin: Embed(source="assets/AccordionHeader_upSkin.png");
-}
 Button
 {
 	disabledSkin: Embed(source="assets/Button_disabledSkin.png",scaleGridLeft="4",scaleGridTop="3",scaleGridRight="60",scaleGridBottom="17");
@@ -57,13 +49,6 @@ CheckBox
 	selectedUpIcon: Embed(source="assets/CheckBox_selectedUpIcon.png");
 	upIcon: Embed(source="assets/CheckBox_upIcon.png");
 }
-ColorPicker
-{
-	disabledSkin: Embed(source="assets/ColorPicker_disabledSkin.png");
-	downSkin: Embed(source="assets/ColorPicker_downSkin.png");
-	overSkin: Embed(source="assets/ColorPicker_overSkin.png");
-	upSkin: Embed(source="assets/ColorPicker_upSkin.png");
-}
 DataGrid
 {
 	borderSkin: Embed(source="assets/DataGrid_borderSkin.png");
@@ -73,35 +58,6 @@ DataGrid
 	headerSeparatorSkin: Embed(source="assets/DataGrid_headerSeparatorSkin.png");
 	sortArrowSkin: Embed(source="assets/DataGrid_sortArrowSkin.png");
 	stretchCursor: Embed(source="assets/DataGrid_stretchCursor.png");
-}
-DateChooser
-{
-	nextMonthDisabledSkin: Embed(source="assets/DateChooser_nextMonthDisabledSkin.png");
-	nextMonthDownSkin: Embed(source="assets/DateChooser_nextMonthDownSkin.png");
-	nextMonthOverSkin: Embed(source="assets/DateChooser_nextMonthOverSkin.png");
-	nextMonthUpSkin: Embed(source="assets/DateChooser_nextMonthUpSkin.png");
-	nextYearDisabledSkin: Embed(source="assets/DateChooser_nextYearDisabledSkin.png");
-	nextYearDownSkin: Embed(source="assets/DateChooser_nextYearDownSkin.png");
-	nextYearOverSkin: Embed(source="assets/DateChooser_nextYearOverSkin.png");
-	nextYearUpSkin: Embed(source="assets/DateChooser_nextYearUpSkin.png");
-	prevMonthDisabledSkin: Embed(source="assets/DateChooser_prevMonthDisabledSkin.png");
-	prevMonthDownSkin: Embed(source="assets/DateChooser_prevMonthDownSkin.png");
-	prevMonthOverSkin: Embed(source="assets/DateChooser_prevMonthOverSkin.png");
-	prevMonthUpSkin: Embed(source="assets/DateChooser_prevMonthUpSkin.png");
-	prevYearDisabledSkin: Embed(source="assets/DateChooser_prevYearDisabledSkin.png");
-	prevYearDownSkin: Embed(source="assets/DateChooser_prevYearDownSkin.png");
-	prevYearOverSkin: Embed(source="assets/DateChooser_prevYearOverSkin.png");
-	prevYearUpSkin: Embed(source="assets/DateChooser_prevYearUpSkin.png");
-	rollOverIndicatorSkin: Embed(source="assets/DateChooser_rollOverIndicatorSkin.png");
-	selectionIndicatorSkin: Embed(source="assets/DateChooser_selectionIndicatorSkin.png");
-	todayIndicatorSkin: Embed(source="assets/DateChooser_todayIndicatorSkin.png");
-}
-DateField
-{
-	disabledSkin: Embed(source="assets/DateField_disabledSkin.png");
-	downSkin: Embed(source="assets/DateField_downSkin.png");
-	overSkin: Embed(source="assets/DateField_overSkin.png");
-	upSkin: Embed(source="assets/DateField_upSkin.png");
 }
 DividedBox
 {
@@ -116,10 +72,6 @@ DragManager
 	linkCursor: Embed(source="assets/DragManager_linkCursor.png");
 	moveCursor: Embed(source="assets/DragManager_moveCursor.png");
 	rejectCursor: Embed(source="assets/DragManager_rejectCursor.png");
-}
-FormItem
-{
-	indicatorSkin: Embed(source="assets/FormItem_indicatorSkin.png");
 }
 HScrollBar
 {
@@ -138,33 +90,9 @@ HScrollBar
 	upArrowOverSkin: Embed(source="assets/HScrollBar_upArrowOverSkin.png");
 	upArrowUpSkin: Embed(source="assets/HScrollBar_upArrowUpSkin.png");
 }
-LinkButton
-{
-	disabledSkin: Embed(source="assets/LinkButton_disabledSkin.png");
-	downSkin: Embed(source="assets/LinkButton_downSkin.png");
-	overSkin: Embed(source="assets/LinkButton_overSkin.png");
-	upSkin: Embed(source="assets/LinkButton_upSkin.png");
-}
 List
 {
 	borderSkin: Embed(source="assets/List_borderSkin.png");
-}
-Menu
-{
-	branchDisabledIcon: Embed(source="assets/Menu_branchDisabledIcon.png");
-	branchIcon: Embed(source="assets/Menu_branchIcon.png");
-	checkDisabledIcon: Embed(source="assets/Menu_checkDisabledIcon.png");
-	checkIcon: Embed(source="assets/Menu_checkIcon.png");
-	radioDisabledIcon: Embed(source="assets/Menu_radioDisabledIcon.png");
-	radioIcon: Embed(source="assets/Menu_radioIcon.png");
-	separatorSkin: Embed(source="assets/Menu_separatorSkin.png");
-}
-MenuBar
-{
-	backgroundSkin: Embed(source="assets/MenuBar_backgroundSkin.png");
-	itemDownSkin: Embed(source="assets/MenuBar_itemDownSkin.png");
-	itemOverSkin: Embed(source="assets/MenuBar_itemOverSkin.png");
-	itemUpSkin: Embed(source="assets/MenuBar_itemUpSkin.png");
 }
 NumericStepper
 {
@@ -185,41 +113,6 @@ Panel
 	closeButtonOverSkin: Embed(source="assets/Panel_closeButtonOverSkin.png");
 	closeButtonUpSkin: Embed(source="assets/Panel_closeButtonUpSkin.png");
 	controlBarBackgroundSkin: Embed(source="assets/Panel_controlBarBackgroundSkin.png");
-}
-PopUpButton
-{
-	disabledSkin: Embed(source="assets/PopUpButton_disabledSkin.png",scaleGridTop="2",scaleGridLeft="2",scaleGridRight="80",scaleGridBottom="20");
-	downSkin: Embed(source="assets/PopUpButton_downSkin.png",scaleGridTop="2",scaleGridLeft="2",scaleGridRight="80",scaleGridBottom="20");
-	overSkin: Embed(source="assets/PopUpButton_overSkin.png",scaleGridTop="2",scaleGridLeft="2",scaleGridRight="80",scaleGridBottom="20");
-	popUpDownSkin: Embed(source="assets/PopUpButton_popUpDownSkin.png",scaleGridTop="2",scaleGridLeft="2",scaleGridRight="80",scaleGridBottom="20");
-	popUpOverSkin: Embed(source="assets/PopUpButton_popUpOverSkin.png",scaleGridTop="2",scaleGridLeft="2",scaleGridRight="80",scaleGridBottom="20");
-	upSkin: Embed(source="assets/PopUpButton_upSkin.png",scaleGridTop="2",scaleGridLeft="2",scaleGridRight="80",scaleGridBottom="20");
-}
-ProgressBar
-{
-	barSkin: Embed(source="assets/ProgressBar_barSkin.png");
-	indeterminateSkin: Embed(source="assets/ProgressBar_indeterminateSkin.png");
-	trackSkin: Embed(source="assets/ProgressBar_trackSkin.png");
-}
-RadioButton
-{
-	disabledIcon: Embed(source="assets/RadioButton_disabledIcon.png");
-	downIcon: Embed(source="assets/RadioButton_downIcon.png");
-	overIcon: Embed(source="assets/RadioButton_overIcon.png");
-	selectedDisabledIcon: Embed(source="assets/RadioButton_selectedDisabledIcon.png");
-	selectedDownIcon: Embed(source="assets/RadioButton_selectedDownIcon.png");
-	selectedOverIcon: Embed(source="assets/RadioButton_selectedOverIcon.png");
-	selectedUpIcon: Embed(source="assets/RadioButton_selectedUpIcon.png");
-	upIcon: Embed(source="assets/RadioButton_upIcon.png");
-}
-Slider
-{
-	thumbDisabledSkin: Embed(source="assets/Slider_thumbDisabledSkin.png");
-	thumbDownSkin: Embed(source="assets/Slider_thumbDownSkin.png");
-	thumbOverSkin: Embed(source="assets/Slider_thumbOverSkin.png");
-	thumbUpSkin: Embed(source="assets/Slider_thumbUpSkin.png");
-	trackHighlightSkin: Embed(source="assets/Slider_trackHighlightSkin.png");
-	trackSkin: Embed(source="assets/Slider_trackSkin.png");
 }
 SWFLoader
 {

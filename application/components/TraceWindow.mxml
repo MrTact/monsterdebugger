@@ -7,6 +7,7 @@
 			
 			// Import classes
 			import mx.collections.XMLListCollection;
+			import renderers.TreeRenderer;
 			
 			
 			// Icons
@@ -87,44 +88,28 @@
 			
 			
 			/**
-			 * Converts regular characters to HTML characters
-			 * @param s: The string to convert
-			 */
-			public function htmlEscape(s:String):String
-			{
-				if (s) {
-					// Remove single quotes
-					while(s.indexOf("\'") != -1) {
-						s = s.replace("\'", "&apos;");
-					}
-					// Remove double quotes
-					while(s.indexOf("\"") != -1) {
-						s = s.replace("\"", "&quot;");
-					}
-	                var xml:XML = <a>{s}</a>;
-	                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)|(^<a\/>$)/g, "");
-				} else {
-					return "";
-				}
-			}
-			
-			
-			/**
 			 * Converts HTML characters to regular characters
 			 * @param s: The string to convert
 			 */
-			public function htmlUnescape(s:String):String
+			private function htmlUnescape(s:String):String
 			{
 				if (s) {
 					
-					// Remove single quotes
-					while(s.indexOf("&apos;") != -1) {
-						s = s.replace("&apos;", "\'");
+					// Remove html elements
+					if (s.indexOf("&apos;") != -1) {
+						s = s.split("&apos;").join("\'");
 					}
-					
-					// Remove double quotes
-					while(s.indexOf("&quot;") != -1) {
-						s = s.replace("&quot;", "\"");
+					if (s.indexOf("&quot;") != -1) {
+						s = s.split("&quot;").join("\"");
+					}
+					if (s.indexOf("&lt;") != -1) {
+						s = s.split("&lt;").join("<");
+					}
+					if (s.indexOf("&gt;") != -1) {
+						s = s.split("&gt;").join(">");
+					}
+					if (s.indexOf("&amp;") != -1) {
+						s = s.split("&amp;").join("&");
 					}
 					
 					var xml:XML = <a/>;
@@ -135,14 +120,14 @@
 					return "";
 				}
 			}
-			
-			
+
+		
 		]]>	
 	</mx:Script>
 	
 	<mx:Panel width="100%" height="100%"/>
 	<mx:Label text="TRACE DETAILS" fontWeight="bold" x="10" y="8" fontSize="11"/>
-	<mx:TextArea id="textArea" visible="false" top="30" left="3" right="3" bottom="3" selectable="true" editable="false"/>
-	<mx:Tree id="tree" dataProvider="{xml}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" visible="false" top="32" left="5" right="5" bottom="5"/>
+	<mx:TextArea id="textArea" visible="false" top="30" left="3" right="3" bottom="3" selectable="true" editable="false" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5"/>
+	<mx:Tree id="tree" dataProvider="{xml}" iconField="@icon" labelField="@label" showRoot="false" itemRenderer="renderers.TreeRenderer" openDuration="0" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" visible="false" top="32" left="5" right="5" bottom="5"/>
 	
 </mx:Window>

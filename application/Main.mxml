@@ -1,33 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <!-- 
 
 	This is the source code for De MonsterDebugger. This AIR
 	application listens to data that is transferred from Flash,
-	AIR or FLEX applications that send debug information using
+	FLEX or AIR applications that send debug information using
 	the appropriate classes.
-	
-	This application will look at the data that is gathered and 
-	will present it in a usable way. You can trace strings, 
-	arrays, objects, XML and even custom classes to De
-	MonsterDebugger. 
-	
+
 	Be aware that any traces made to De MonsterDebugger may 
 	be viewed by others. De MonsterDebugger is intended to be 
-	used to debug unpublished Flash, AIR of FLEX applications in
-	the environment that they will be used in as a final product. 
+	used to debug Flash, FLEX or AIR applications in a protective
+	environment that they will not be used in the final launch. 
 	Please make sure that you do not send any debug material to
-	the debugger from a live running application.
+	the debugger from a live running application. 
 	
 	Use at your own risk.
 	
-	@author		Ferdi Koomen
+	@author		Ferdi Koomen, Joost Harts
 	@company	De Monsters
 	@link 		http://www.deMonsterDebugger.com
-	@version 	2.04
+	@version 	2.5 (stable)
 	
 	
-	Special thanks to Arjan van Wijk from MediaMonks.nl
+	Special thanks to Arjan van Wijk and Thijs Broerse from MediaMonks.nl
 	
 	
 	Copyright 2009, De Monsters
@@ -39,26 +33,39 @@
 	
 	This program is distributed in the hope that it will be useful,
 	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 	GNU General Public License for more details.
 	
 	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 -->
 
-<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:fc="http://www.adobe.com/2006/fc" layout="absolute" showTitleBar="false" showStatusBar="false" usePreloader="false" backgroundColor="#7F7F7F" color="#000000" themeColor="haloSilver" borderThickness="0" menu="{nativeMenu}" initialize="init()" creationComplete="creationComplete()" horizontalScrollPolicy="off" verticalScrollPolicy="off" xmlns:components="components.*">
+<mx:WindowedApplication 
+	xmlns:mx="http://www.adobe.com/2006/mxml" 
+	xmlns:fc="http://www.adobe.com/2006/fc" 
+	layout="absolute"
+	showTitleBar="false" 
+	showStatusBar="false" 
+	usePreloader="false" 
+	backgroundColor="#7F7F7F" 
+	color="#000000" 
+	themeColor="haloSilver" 
+	borderThickness="0" 
+	menu="{nativeMenu}" 
+	creationComplete="creationComplete()" 
+	closing="closingApplication()" 
+	horizontalScrollPolicy="off" 
+	verticalScrollPolicy="off"
+	xmlns:components="components.*"
+	>
 	
 		
 	<mx:Style source="skin/style.css"/>
 	
-
-	<!-- TODO: Change font size through xml settings -->	
-	
-	
 	<mx:Script>
 		<![CDATA[
-			
+
 			import air.update.ApplicationUpdaterUI;
 			import air.update.events.UpdateEvent;
 			import mx.core.Window;
@@ -145,6 +152,7 @@
 			private const TYPE_BOOLEAN				:String = "Boolean";
 			private const TYPE_NUMBER				:String = "Number";
 			private const TYPE_OBJECT				:String = "Object";
+			private const TYPE_VECTOR				:String = "Vector";
 			private const TYPE_STRING				:String = "String";
 			private const TYPE_INT					:String = "int";
 			private const TYPE_UINT					:String = "uint";
@@ -174,6 +182,7 @@
 			
 			// Commands
 			private const COMMAND_HELLO				:String = "HELLO";
+			private const COMMAND_HELLO_RESPONSE	:String = "HELLO_RESPONSE";
 			private const COMMAND_ROOT				:String = "ROOT";
 			private const COMMAND_BASE				:String = "BASE";
 			private const COMMAND_TRACE				:String = "TRACE";
@@ -198,7 +207,7 @@
 			
 			
 			// Current version
-			private const VERSION:String = "2.04";
+			private const VERSION:String = "2.5";
 			
 			
 			// The current selected tree item target
@@ -221,6 +230,16 @@
 			private var bufferPackage:ByteArray = new ByteArray();
 			
 			
+			// Auto update timer
+			private var autoRefreshTimer:Timer;
+			
+			
+			//preformance storage vector
+			private var fpsStorage:Vector.<Number> = new Vector.<Number>;
+			private var memStorage:Vector.<Number> = new Vector.<Number>;
+			private var timeStorage:Vector.<Number> = new Vector.<Number>;
+			
+			
 			// Zip file
 			private var zip:FZip;
 			private var zipIndex:Number;
@@ -228,18 +247,19 @@
 			
 			
 			// Toggle states and preferences
+			private var autoClear:Boolean = false;
+			private var autoScroll:Boolean = false;
+			private var autoRefresh:Boolean = false;
 			private var showApp:Boolean = true;
 			private var showTraces:Boolean = true;
 			private var showMonitor:Boolean = true;
 			private var showTree:Boolean = true;
 			private var showDisplaytree:Boolean = false;
-			private var uiAppHeight:Number = 66.66;
-			private var uiTracesHeight:Number = 33.33;
-			private var uiMonitorHeight:Number = 90;
-			private var uiInspectorWidth:Number = 350;
-			private var uiTreeWidth:Number = 50;
-			private var uiDisplaytreeWidth:Number = 50;
-			private var uiLoaded:Boolean = false;
+			private var uiAppHeight:Number = 0; // percent
+			private var uiTracesHeight:Number = 0; // percent
+			private var uiInspectorWidth:Number = 0; // percent
+			private var uiTreeWidth:Number = 0; // percent
+			private var uiDisplaytreeWidth:Number = 0; // percent
 			private var dontShowProperties:Boolean = false;
 			private var alwaysOnTop:Boolean = false;
 			private var minimizeToTray:Boolean = false;
@@ -253,12 +273,20 @@
 			private var tickerMessage:String = "De MonsterDebugger is made specially for you by Design Studio De Monsters";
 			private var tickerURL:String = "http://www.demonsters.com";
 			
+			// Scroll position
+			private var displaytreeVPOS:Number = 0;
+			private var displaytreeHPOS:Number = 0;
+			private var treeVPOS:Number = 0;
+			private var treeHPOS:Number = 0;
+			private var propertiesVPOS:Number = 0;
+			private var functionsVPOS:Number = 0;
+			
 			
 			/**
-			 * The application is loading
+			 * The application is done loading
 			 */
-			private function init():void
-			{				
+			private function creationComplete():void
+			{
 				// Get the preferences
 				so = SharedObject.getLocal("settings");
 				
@@ -276,6 +304,9 @@
 					}
 					
 					// Load the saved data
+					autoClear = so.data.autoClear;
+					autoScroll = so.data.autoScroll;
+					autoRefresh = so.data.autoRefresh;
 					nativeWindow.x = so.data.windowX;
 					nativeWindow.y = so.data.windowY;
 					nativeWindow.width = so.data.windowWidth;
@@ -287,7 +318,6 @@
 					showDisplaytree = so.data.showDisplaytree;
 					uiAppHeight = so.data.uiAppHeight;
 					uiTracesHeight = so.data.uiTracesHeight;
-					uiMonitorHeight = so.data.uiMonitorHeight;
 					uiInspectorWidth = so.data.uiInspectorWidth;
 					uiTreeWidth = so.data.uiTreeWidth;
 					uiDisplaytreeWidth = so.data.uiDisplaytreeWidth;
@@ -299,8 +329,18 @@
 				}
 				else
 				{
+					// Set the size
+					uiAppHeight = appCanvas.percentHeight;
+					uiTracesHeight = tracesCanvas.percentHeight;
+					uiTreeWidth = treeCanvas.percentWidth;
+					uiDisplaytreeWidth = displaytreeCanvas.percentWidth;
+					uiInspectorWidth = inspectorCanvas.percentWidth;
+				
 					// Reset the data and save the default values
 					so.data.version = VERSION;
+					so.data.autoClear = autoClear;
+					so.data.autoScroll = autoScroll;
+					so.data.autoRefresh = autoRefresh;
 					so.data.showApp = showApp;
 					so.data.showTraces = showTraces;
 					so.data.showMonitor = showMonitor;
@@ -308,7 +348,6 @@
 					so.data.showDisplaytree = showDisplaytree;
 					so.data.uiAppHeight = uiAppHeight;
 					so.data.uiTracesHeight = uiTracesHeight;
-					so.data.uiMonitorHeight = uiMonitorHeight;
 					so.data.uiInspectorWidth = uiInspectorWidth;
 					so.data.uiTreeWidth = uiTreeWidth;
 					so.data.uiDisplaytreeWidth = uiDisplaytreeWidth;
@@ -325,17 +364,6 @@
 					so.data.saved = true;
 				}
 				
-				// Setup exiting event listeners so we can save the preferences on exit
-				nativeWindow.addEventListener(Event.CLOSING, closingApplication);
-				nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGING, stateChangeWindow);
-			}
-			
-			
-			/**
-			 * The application is done loading
-			 */
-			private function creationComplete():void
-			{
 				// Check if the window should be in fullscreen
 				// Only PC's support the windowMaximized property
 				if (NativeWindow.supportsMenu) {
@@ -347,6 +375,13 @@
 					}
 				}
 				
+				// Set the size
+				appCanvas.percentHeight = uiAppHeight;
+				tracesCanvas.percentHeight = uiTracesHeight;
+				treeCanvas.percentWidth = uiTreeWidth;
+				displaytreeCanvas.percentWidth = uiDisplaytreeWidth;
+				inspectorCanvas.percentWidth = uiInspectorWidth;
+				
 				// Update the inteface
 				updateInterface();
 				
@@ -354,8 +389,7 @@
 				nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGE, updateInterface);
 				nativeWindow.addEventListener(NativeWindowBoundsEvent.RESIZING, resizeInterface);
 				nativeWindow.addEventListener(NativeWindowBoundsEvent.RESIZE, resizeInterface);
-				
-				// Show the window
+				nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGING, stateChangeWindow);
 				nativeWindow.activate();
 				
 				// Check if the window should be on top
@@ -391,7 +425,12 @@
 				lineIn.addEventListener(StatusEvent.STATUS, statusHandler);
 				lineIn.allowDomain("*");
 				lineIn.client = this;
-			
+				
+				// Timer for the auto update
+				autoRefreshTimer = new Timer(2000);
+				autoRefreshTimer.start();
+				autoRefreshTimer.addEventListener(TimerEvent.TIMER, autoRefreshCallback);
+				
 				try {				
 					lineIn.connect(LINE_IN);
 				} catch(error:ArgumentError) {
@@ -483,7 +522,8 @@
 					var parameters:XMLList;
 					var targets:XMLList;
 					var target:String = "";
-					var message:String = "";	
+					var message:String = "";
+					var memory:String = "";
 					var date:Date;
 					var hours:String;
 					var minutes:String;
@@ -492,13 +532,14 @@
 					var time:String;
 					var searchTerms:Array
 					var item:Object;
-						
+					
 					// Do the actions
 					switch(command.text)
 					{
 						
 						// Received hi!
 						case COMMAND_HELLO:
+							if (autoClear) clearTraces();
 							versionError = null;
 							var clientVersion:Number = Number(command.version);
 							var appVersion:Number = Number(VERSION);
@@ -510,7 +551,8 @@
 									color:		0xCC0000,
 									message: 	"Please update your client class to version " + appVersion +". Double click here to export the class.", 
 									xml: 		null,
-									date:		new Date()
+									date:		new Date(),
+									memory:		""
 								};
 								tracesAll.addItem(versionError);
 								tracesFiltered.addItem(versionError);
@@ -524,6 +566,13 @@
 		       				properties.removeAll();
 		       				functions.removeAll();
 		       				monitor.reset();
+		       				displaytreeVPOS = 0;
+		       				displaytreeHPOS = 0;
+		       				treeVPOS = 0;
+		       				treeHPOS = 0;
+		       				propertiesVPOS = 0;
+		       				functionsVPOS = 0;
+		       				send({text:COMMAND_HELLO_RESPONSE});
 							send({text:COMMAND_ROOT, functions:false});
 						break;
 						
@@ -539,7 +588,12 @@
 							if (functionsGrid) functionsGrid.destroyItemEditor();
 		       				properties.removeAll();
 		       				functions.removeAll();
-		       				monitor.reset();
+		       				displaytreeVPOS = 0;
+		       				displaytreeHPOS = 0;
+		       				treeVPOS = 0;
+		       				treeHPOS = 0;
+		       				propertiesVPOS = 0;
+		       				functionsVPOS = 0;
 						break;
 						
 						
@@ -561,6 +615,12 @@
 							if (functionsGrid) functionsGrid.destroyItemEditor();
 		       				properties.removeAll();
 		       				functions.removeAll();
+		       				displaytreeVPOS = 0;
+		       				displaytreeHPOS = 0;
+		       				treeVPOS = 0;
+		       				treeHPOS = 0;
+		       				propertiesVPOS = 0;
+		       				functionsVPOS = 0;
 						break;
 						
 						
@@ -579,14 +639,18 @@
 									break;
 								}
 							}
-							
+
 							// Filter the tree
 							filterApplication();
+							
+							// Set the scroll
+							tree.verticalScrollPosition = treeVPOS;
+							tree.horizontalScrollPosition = treeHPOS;
 							
 						break;
 						
 						
-						//Received object data
+						// Received object data
 						case COMMAND_GET_DISPLAYOBJECT:
 						
 							// Get all targets in the current xml
@@ -601,6 +665,10 @@
 									break;
 								}
 							}
+							
+							// Set the scroll
+							displaytree.verticalScrollPosition = displaytreeVPOS;
+							displaytree.horizontalScrollPosition = displaytreeHPOS;
 							
 						break;
 						
@@ -644,6 +712,9 @@
 									permission:		prop[i].@permission
 								});
 							}
+							
+							// Set the scroll
+							if (propertiesGrid) propertiesGrid.verticalScrollPosition = propertiesVPOS;
 						break;
 						
 						
@@ -694,6 +765,9 @@
 									parameters:		func[i]..parameter
 								});
 							}
+							
+							// Set the scroll
+							if (functionsGrid) functionsGrid.verticalScrollPosition = functionsVPOS;
 						break;
 						
 						
@@ -721,6 +795,7 @@
 							seconds 	= (date.getSeconds() < 10) ? "0" + date.getSeconds().toString() : date.getSeconds().toString();
 							miliseconds	= date.getMilliseconds().toString();
 							time 		= hours + ":" + minutes + ":" + seconds + "." + miliseconds;
+							memory      = Math.round(command.memory / 1024) +  " Kb";
 							
 							// Create the message
 							if (command.xml.children()[0].children().length() == 0) {
@@ -737,7 +812,8 @@
 								color:		command.color,
 								message: 	message, 
 								xml: 		command.xml,
-								date:		date
+								date:		date, 
+								memory:		memory
 							};
 							
 							// Add the item to the array
@@ -751,6 +827,7 @@
 							{
 								// No, so just add the item
 								tracesFiltered.addItem(item);
+								timeStorage.push(date.time);
 							} 
 							else
 							{
@@ -759,11 +836,20 @@
 								message = item.message.toLowerCase();
 								if (filterTracesCheck(target, searchTerms) || filterTracesCheck(message, searchTerms)) {
 									tracesFiltered.addItem(item);
+									timeStorage.push(date.time);
 								}
 							}
+		
+							// Autoscroll
+							if (autoScroll) {
+								tracesDatagrid.verticalScrollPosition = tracesDatagrid.maxVerticalScrollPosition + 1;
+							}
+							
+							// Send the dates to the monitor
+							monitor.setMarkers(timeStorage);
 							
 							// Clear the item
-							item = null;				
+							item = null;
 							
 						break;
 						
@@ -778,6 +864,7 @@
 							seconds 	= (date.getSeconds() < 10) ? "0" + date.getSeconds().toString() : date.getSeconds().toString();
 							miliseconds	= date.getMilliseconds().toString();
 							time 		= hours + ":" + minutes + ":" + seconds + "." + miliseconds;
+							memory      = Math.round(command.memory / 1024) +  " Kb";
 							
 							// Read the bitmap
 							var bitmapData:BitmapData = new BitmapData(command.width, command.height);
@@ -794,7 +881,8 @@
 								bitmapData:	bitmapData, 
 								message: 	"Snapshot", 
 								xml: 		null,
-								date:		date
+								date:		date, 
+								memory:		memory
 							};
 							
 							// Add the item to the array
@@ -808,6 +896,7 @@
 							{
 								// No, so just add the item
 								tracesFiltered.addItem(item);
+								timeStorage.push(date.time);
 							} 
 							else
 							{
@@ -816,8 +905,12 @@
 								message = item.message.toLowerCase();
 								if (filterTracesCheck(target, searchTerms) || filterTracesCheck(message, searchTerms)) {
 									tracesFiltered.addItem(item);
+									timeStorage.push(date.time);
 								}
 							}
+							
+							// Send the dates to the monitor
+							monitor.setMarkers(timeStorage);
 							
 							// Clear the item
 							item = null;				
@@ -827,11 +920,13 @@
 						
 						// Received new FPS and menory values
 						case COMMAND_MONITOR:
-							var monitorDATE:Date = command.date;
-							var monitorTIME:uint = command.time;
+							var monitorTIME:Number = command.time;
+							var monitorSTART:Number = command.start;
 							var monitorFPS:uint = command.fps;
 							var monitorMEM:uint = command.memory;
-							monitor.addData(monitorDATE, monitorTIME, monitorFPS, monitorMEM);
+							fpsStorage.push(command.fps);
+							memStorage.push(command.memory);
+							monitor.addData(monitorTIME, monitorSTART, monitorFPS, monitorMEM);
 						break;
 						
 						
@@ -840,6 +935,30 @@
 							clearTraces();
 						break;
 					}
+				}
+			}
+			
+			
+			/**
+			 * Auto update the inspector (every 1 second)
+			 */
+			private function autoRefreshCallback(event:TimerEvent):void
+			{
+				if (autoRefresh) {
+	   				if (selectedTarget != null)
+	   				{
+	   					// Destroy the editor
+						if (propertiesGrid) propertiesGrid.destroyItemEditor();
+						if (functionsGrid) functionsGrid.destroyItemEditor();
+						
+						// Set scroll
+						if (propertiesGrid) propertiesVPOS = propertiesGrid.verticalScrollPosition;
+						if (functionsGrid) functionsVPOS = functionsGrid.verticalScrollPosition;
+						
+						// Send calls
+	   					send({text:COMMAND_GET_PROPERTIES, target:selectedTarget});
+						send({text:COMMAND_GET_FUNCTIONS, target:selectedTarget});
+	   				}
 				}
 			}
 			
@@ -858,9 +977,13 @@
 			 */
 			private function clearTraces():void
 			{
+				fpsStorage = new Vector.<Number>;
+				memStorage = new Vector.<Number>;
+				timeStorage = new Vector.<Number>;
 				tracesAll.removeAll();
 				tracesFiltered.removeAll();
 				tracesDatagrid.horizontalScrollPosition = 0;
+				monitor.reset();
 			}
 			
 			
@@ -871,6 +994,7 @@
 			{
 				// Clear the array
 				tracesFiltered.removeAll()
+				timeStorage = new Vector.<Number>();
 				
 				// Var needed for the loop
 				var i:int = 0;
@@ -886,6 +1010,7 @@
 					// No, so just copy all
 					for (i = 0; i < tracesAll.length; i++) {
 						tracesFiltered.addItem(tracesAll[i]);
+						timeStorage.push(tracesAll[i].date.time);
 					}
 				} 
 				else
@@ -900,9 +1025,13 @@
 						// Add if needed
 						if (filterTracesCheck(target, searchTerms) || filterTracesCheck(message, searchTerms)) {
 							tracesFiltered.addItem(tracesAll[i]);
+							timeStorage.push(tracesAll[i].date.time);
 						}
 					}
 				}
+				
+				// Send the dates to the monitor
+				monitor.setMarkers(timeStorage);
 			}
 			
 			
@@ -945,6 +1074,10 @@
 			 */
 			private function refreshInspector():void
 			{
+				// Set scroll
+				if (propertiesGrid) propertiesVPOS = propertiesGrid.verticalScrollPosition;
+				if (functionsGrid) functionsVPOS = functionsGrid.verticalScrollPosition;
+				
 				// We might want to add the following line
 				// if (tree.selectedIndex != -1) { Do something }
 				if (propertiesGrid) propertiesGrid.destroyItemEditor();
@@ -966,6 +1099,10 @@
 				// Check if the tree is loaded
 				if (tree.openItems)
 				{
+					// Set scroll
+					treeVPOS = tree.verticalScrollPosition;
+					treeHPOS = tree.horizontalScrollPosition;
+					
 					// Get the current open targets
 					var open:Array = tree.openItems as Array;
 					var targets:Array = new Array();
@@ -975,6 +1112,10 @@
 					
 					// Sort the targets
 					targets = targets.sort();
+					
+					// Set scroll
+					if (propertiesGrid) propertiesVPOS = propertiesGrid.verticalScrollPosition;
+					if (functionsGrid) functionsVPOS = functionsGrid.verticalScrollPosition;
 					
 					// Clear the data
 					selectedTarget = null;
@@ -999,6 +1140,10 @@
 				// Check if the tree is loaded
 				if (displaytree.openItems)
 				{
+					// Set scroll
+					displaytreeVPOS = displaytree.verticalScrollPosition;
+					displaytreeHPOS = displaytree.horizontalScrollPosition;
+					
 					// Get the current open targets
 					var open:Array = displaytree.openItems as Array;
 					var targets:Array = new Array();
@@ -1008,6 +1153,10 @@
 					
 					// Sort the targets
 					targets = targets.sort();
+					
+					// Set scroll
+					if (propertiesGrid) propertiesVPOS = propertiesGrid.verticalScrollPosition;
+					if (functionsGrid) functionsVPOS = functionsGrid.verticalScrollPosition;
 					
 					// Clear the data
 					selectedTarget = null;
@@ -1052,11 +1201,7 @@
 							searchTerms.push(searchString);
 						}
 					}
-					
-					// Save the scroll position
-					var vscroll:int = tree.verticalScrollPosition;
-					var hscroll:int = tree.verticalScrollPosition;
-					
+
 					// Filter the data
 					children = filterChildren(data.node, searchTerms);
 					data.setChildren(children);
@@ -1079,10 +1224,6 @@
 					appFiltered.source = null;
 					appFiltered.source = data;
 					tree.openItems = openNew;
-						
-					// Set the scroll position
-					tree.verticalScrollPosition = vscroll;
-					tree.horizontalScrollPosition = hscroll;
 					
 					// Clear the data
 					data = null;
@@ -1224,7 +1365,7 @@
 				{
 					// Get the data
 					var item:Object = tracesFiltered.getItemAt(event.currentTarget.selectedIndex);
-					monitor.setMarker(item.date);
+					monitor.setMarker(item.date.time);
 				}
 			}
 			
@@ -1239,8 +1380,12 @@
 				// Remove selection
 				if (target.toLowerCase() == "live") {
 					displaytree.selectedIndex = -1;
+					treeVPOS = tree.verticalScrollPosition;
+					treeHPOS = tree.horizontalScrollPosition;
 				} else {
 					tree.selectedIndex = -1;
+					displaytreeVPOS = displaytree.verticalScrollPosition;
+					displaytreeHPOS = displaytree.horizontalScrollPosition;
 				}
 				
 				// Check if the target is still there
@@ -1254,6 +1399,8 @@
 					properties.removeAll();
 					functions.removeAll();
 					selectedTarget = null;
+					propertiesVPOS = 0;
+					functionsVPOS = 0;
 					
 					// Only get the info from objects
 					if (objType != TYPE_WARNING && objType != TYPE_STRING && objType != TYPE_BOOLEAN && objType != TYPE_NUMBER && objType != TYPE_INT && objType != TYPE_UINT && objType != TYPE_FUNCTION)
@@ -1281,8 +1428,12 @@
 				{
 					// Send the command
 					if (target.toLowerCase() == "live") {
+						treeVPOS = tree.verticalScrollPosition;
+						treeHPOS = tree.horizontalScrollPosition;
 						send({text:COMMAND_GET_OBJECT, target:String(event.item.@target), functions:false});
 					} else {
+						displaytreeVPOS = displaytree.verticalScrollPosition;
+						displaytreeHPOS = displaytree.horizontalScrollPosition;
 						send({text:COMMAND_GET_DISPLAYOBJECT, target:String(event.item.@target), functions:false});
 					}
 				}
@@ -1290,7 +1441,7 @@
 			
 			
 			/**
-			 * The inspctor tab is clicked
+			 * The inspector tab is clicked
 			 */	
 			public function inspectorSwitch():void
 			{
@@ -1533,17 +1684,23 @@
 			
 			/**
 			 * The application is exiting, so save the window preferences
-			 * @param event: Closing event
 			 */ 
-			private function closingApplication(event:Event = null):void
+			private function closingApplication():void
 			{
 				// Save the window preferences
 				if (nativeWindow)
 				{
+					// Save the size
+					uiAppHeight = appCanvas.percentHeight;
+					uiTracesHeight = tracesCanvas.percentHeight;
+					uiTreeWidth = treeCanvas.percentWidth;
+					uiDisplaytreeWidth = displaytreeCanvas.percentWidth;
+					uiInspectorWidth = inspectorCanvas.percentWidth;
+					
 					// Dont save the maximized property on a Mac
 					// Dont save the width and height if the window is minimized
 					// We could save these values on a resize event...
-					if (nativeWindow.displayState == NativeWindowDisplayState.MAXIMIZED && NativeWindow.supportsMenu) {
+					if (NativeWindow.supportsMenu && nativeWindow.displayState == NativeWindowDisplayState.MAXIMIZED) {
 						so.data.windowMaximized = true;
 					} else if (nativeWindow.displayState == NativeWindowDisplayState.NORMAL) {
 						so.data.windowMaximized = false;
@@ -1552,6 +1709,9 @@
 						so.data.windowWidth = nativeWindow.width;
 						so.data.windowHeight = nativeWindow.height;
 					}
+					so.data.autoClear = autoClear;
+					so.data.autoScroll = autoScroll;
+					so.data.autoRefresh = autoRefresh;
 					so.data.showApp = showApp;
 					so.data.showTraces = showTraces;
 					so.data.showMonitor = showMonitor;
@@ -1559,7 +1719,6 @@
 					so.data.showDisplaytree = showDisplaytree;
 					so.data.uiAppHeight = uiAppHeight;
 					so.data.uiTracesHeight = uiTracesHeight;
-					so.data.uiMonitorHeight = uiMonitorHeight;
 					so.data.uiInspectorWidth = uiInspectorWidth;
 					so.data.uiTreeWidth = uiTreeWidth;
 					so.data.uiDisplaytreeWidth = uiDisplaytreeWidth;
@@ -1589,11 +1748,17 @@
 					xml += '<time>' + tracesAll[i].time + '</time>' + '\n';
 					xml += '<target>' + tracesAll[i].target + '</target>' + '\n';
 					xml += '<color>' + tracesAll[i].color + '</color>' + '\n';
-					xml += '<message>' + tracesAll[i].message + '</message>' + '\n';
 					xml += '<timestamp>' + tracesAll[i].date.time + '</timestamp>' + '\n';
+					xml += '<memory>' + tracesAll[i].memory + '</memory>' + '\n';
 					xml += tracesAll[i].xml + '\n';
 					xml += '</item>' + '\n';
 				}
+
+				// Add the preformance numbers
+				// xml += '<performance>' + '\n';
+				// xml += '<fps>'+ fpsStorage.join(",") + '</fps>' + '\n';
+				// xml += '<memory>' + memStorage.join(",") + '</memory>' + '\n';
+				// xml += '</performance>' + '\n';
 				
 				// Close the XML
 				xml += '</items>' + '\n';
@@ -1634,14 +1799,26 @@
 				// Load the traces from XML
 				for (var i:int = 0; i < xml.item.length(); i++)
 				{
+					// Get the xml
+					var xmlRoot:XML = new XML(xml.item[i].root);
+					var message:String = "";
+					
+					// Create the message
+					if (xmlRoot.children()[0].children().length() == 0) {
+						message = stripBreaks(htmlUnescape(xmlRoot.children()[0].@label));
+					} else {
+						message = stripBreaks(htmlUnescape(xmlRoot.children()[0].@label)) + " ...";
+					}						
+					
 					var item:Object = {
 						line:		xml.item[i].line, 
 						time:		xml.item[i].time, 
 						target:		xml.item[i].target, 
 						color:		xml.item[i].color,
-						message: 	xml.item[i].message, 
-						xml: 		new XML(xml.item[i].root),
-						date:		new Date(xml.item[i].timestamp)
+						message: 	message,
+						xml: 		xmlRoot,
+						date:		new Date(xml.item[i].timestamp),
+						memory:		xml.item[i].memory
 					};
 					
 					//Add the item
@@ -1749,60 +1926,6 @@
 				window.nativeWindow.y = nativeWindow.y + ((nativeWindow.height - window.nativeWindow.height) / 2);
 			}
 			
-			
-			/**
-			 * Add resize event listeners to the vbox
-			 */
-			private function addResizeListeners():void
-			{
-				appCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-				treeCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-				// displaytreeCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-				// tracesCanvas.addEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-			}
-			
-			
-			/**
-			 * Remove resize event listeners to the vbox
-			 */
-			private function removeResizeListeners():void
-			{
-				appCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-				treeCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-				displaytreeCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-				tracesCanvas.removeEventListener(ResizeEvent.RESIZE, saveCanvasSize);
-			}
-			
-			
-			/**
-			 * Save the panel sizes (relative)
-			 * @param event: Reize event from the canvas
-			 */
-			private function saveCanvasSize(event:ResizeEvent):void
-			{
-				var total:Number;
-				
-				// Calculate height
-				if (uiLoaded && showTraces && showApp && tracesCanvas.visible && appCanvas.visible){
-					total = appCanvas.height + tracesCanvas.height;
-					uiAppHeight = 100 / (total / appCanvas.height);
-					uiTracesHeight = 100 / (total / tracesCanvas.height);
-				}
-				
-				// Save inspector width
-				uiInspectorWidth = inspectorCanvas.width;
-				
-				// Calculate width
-				if (uiLoaded && showApp && showDisplaytree && treeCanvas.visible && displaytreeCanvas.visible) {
-					total = treeCanvas.width + displaytreeCanvas.width;
-					uiTreeWidth = 100 / (total / treeCanvas.width);
-					uiDisplaytreeWidth = 100 / (total / displaytreeCanvas.width);
-				}
-				
-				trace("saveCanvasSize", uiInspectorWidth);
-				
-			}
-			
 				
 			/**
 			 * Resizing the window
@@ -1810,13 +1933,8 @@
 			 */
 			private function resizeInterface(event:NativeWindowBoundsEvent):void
 			{
-				// Remove the event listeners
-				removeResizeListeners();
-				
-				// Update the interface
-				if (uiLoaded) {
-					updateInterface();
-				}
+				appFilterField.visible = (treeCanvas.width > 320);
+				appFilterLabel.visible = (treeCanvas.width > 360);
 			}
 			
 			
@@ -2021,6 +2139,21 @@
 					showMonitor = !showMonitor;
 					updateInterface();
 					break;
+
+					case "autoClear":
+					autoClear = !autoClear;
+					updateInterface();
+					break;
+					
+					case "autoScroll":
+					autoScroll = !autoScroll;
+					updateInterface();
+					break;
+					
+					case "autoRefresh":
+					autoRefresh = !autoRefresh;
+					updateInterface();
+					break;
 					
 					case "alwaysOnTop":
 					alwaysOnTop =! alwaysOnTop;
@@ -2056,35 +2189,25 @@
 				applicationMenu.menu[1].menuitem[8].@enabled = true;
 				applicationMenu.menu[1].menuitem[9].@enabled = true;
 				applicationMenu.menu[1].menuitem[10].@enabled = true;
-				applicationMenu.menu[1].menuitem[12].@enabled = true;
+				applicationMenu.menu[1].menuitem[11].@enabled = true;
 				applicationMenu.menu[1].menuitem[13].@enabled = true;
+				applicationMenu.menu[1].menuitem[14].@enabled = true;
+				applicationMenu.menu[1].menuitem[15].@enabled = true;
 				
 				// Set monitor
 				monitorCanvas.visible = showMonitor;
-				monitorCanvas.height = (showMonitor)? 90 : -2;
-				
-				// Save the effective UI height
-				var uiHeight:Number = height - advertisement.height - monitorCanvas.height - 6;
-				var uiWidth:Number = width - uiInspectorWidth - 6;
-				
-				// Set the inspector width
-				inspectorCanvas.width = uiInspectorWidth;
-				inspectorCanvas.minWidth = 200;
+				monitorCanvas.includeInLayout = showMonitor;
 								
 				// Show live app and display tree
 				if (showApp && showDisplaytree)
 				{
 					// Live canvas
 					treeCanvas.visible = true;
-					treeCanvas.minWidth = 200;
-					treeCanvas.maxWidth = 10000;
-					treeCanvas.width = Math.round((uiWidth / 100) * uiTreeWidth);
+					treeCanvas.includeInLayout = true;
 					
 					// Display tree canvas
 					displaytreeCanvas.visible = true;
-					displaytreeCanvas.minWidth = 200;
-					displaytreeCanvas.maxWidth = 10000;
-					displaytreeCanvas.width = Math.round((uiWidth / 100) * uiDisplaytreeWidth);
+					displaytreeCanvas.includeInLayout = true;
 					
 					// Enable / disable menu items
 					applicationMenu.menu[1].menuitem[9].@enabled = true;
@@ -2096,19 +2219,15 @@
 				{
 					// Live canvas
 					treeCanvas.visible = true;
-					treeCanvas.minWidth = 200;
-					treeCanvas.maxWidth = 10000;
-					treeCanvas.width = uiWidth;
+					treeCanvas.includeInLayout = true;
 					
 					// Display tree canvas
 					displaytreeCanvas.visible = false;
-					displaytreeCanvas.minWidth = -2;
-					displaytreeCanvas.maxWidth  = -2;
-					displaytreeCanvas.width = -2;
+					displaytreeCanvas.includeInLayout = false;
 					
 					// Enable / disable menu items
-					applicationMenu.menu[1].menuitem[9].@enabled = true;
-					applicationMenu.menu[1].menuitem[10].@enabled = false;
+					applicationMenu.menu[1].menuitem[8].@enabled = true;
+					applicationMenu.menu[1].menuitem[9].@enabled = false;
 				}
 				
 				// Show display tree
@@ -2116,62 +2235,31 @@
 				{
 					// Live canvas
 					treeCanvas.visible = false;
-					treeCanvas.minWidth = -2;
-					treeCanvas.maxWidth  = -2;
-					treeCanvas.width = -2;
+					treeCanvas.includeInLayout = false;
 					
 					// Display tree canvas
 					displaytreeCanvas.visible = true;
-					displaytreeCanvas.minWidth = 200;
-					displaytreeCanvas.maxWidth = 10000;
-					displaytreeCanvas.width = uiWidth;
+					displaytreeCanvas.includeInLayout = true;
 					
 					// Enable / disable menu items
-					applicationMenu.menu[1].menuitem[9].@enabled = false;
-					applicationMenu.menu[1].menuitem[10].@enabled = true;
+					applicationMenu.menu[1].menuitem[8].@enabled = false;
+					applicationMenu.menu[1].menuitem[9].@enabled = true;
 				}
 				
 				// Show or hide the filter field
 				appFilterField.visible = true;
 				appFilterLabel.visible = true;
-				if (treeCanvas.width < 320) {
-					appFilterField.visible = false;
-					appFilterLabel.visible = false;
-				} else if (treeCanvas.width < 360) {
-					appFilterField.visible = true;
-					appFilterLabel.visible = false;
-				}
 				
 				// Show traces and one of the two inspectors
 				if (showTraces && (showApp || showDisplaytree))
-				{
-					// Save the height
-					var appCanvasHeight:int = Math.round((uiHeight / 100) * uiAppHeight);
-					var tracesCanvasHeight:int = Math.round((uiHeight / 100) * uiTracesHeight);
-					
-					// Check for min height
-					if (tracesCanvasHeight < 80) {
-						appCanvasHeight -= (80 - tracesCanvasHeight);
-						tracesCanvasHeight = 80;
-					}
-					
-					// Check for min height
-					if (appCanvasHeight < 130) {
-						tracesCanvasHeight -= (130 - appCanvasHeight);
-						appCanvasHeight = 130;
-					}
-					
+				{					
 					// Application canvas
 					appCanvas.visible = true;
-					appCanvas.minHeight = 130;
-					appCanvas.maxHeight = 10000;
-					appCanvas.height = appCanvasHeight;
+					appCanvas.includeInLayout = true;
 					
 					// Trace canvas
 					tracesCanvas.visible = true;
-					tracesCanvas.minHeight = 80;
-					tracesCanvas.maxHeight = 10000;
-					tracesCanvas.height = tracesCanvasHeight;
+					tracesCanvas.includeInLayout = true;
 				}
 				
 				// Show one of the two inspectors only
@@ -2179,15 +2267,11 @@
 				{
 					// Application canvas
 					appCanvas.visible = true;
-					appCanvas.minHeight = 80;
-					appCanvas.maxHeight = 10000;
-					appCanvas.height = uiHeight;
+					appCanvas.includeInLayout = true;
 					
 					// Trace canvas
 					tracesCanvas.visible = false;
-					tracesCanvas.minHeight = -2;
-					tracesCanvas.maxHeight = -2;
-					tracesCanvas.height = -2;
+					tracesCanvas.includeInLayout = false;
 
 					// Enable / disable the menus
 					applicationMenu.menu[1].menuitem[1].@enabled = false;
@@ -2199,15 +2283,11 @@
 				{
 					// Application canvas
 					appCanvas.visible = false;
-					appCanvas.minHeight = -2;
-					appCanvas.maxHeight = -2;
-					appCanvas.height = -2;
+					appCanvas.includeInLayout = false;
 					
 					// Trace canvas
 					tracesCanvas.visible = true;
-					tracesCanvas.minHeight = 80;
-					tracesCanvas.maxHeight = 10000;
-					tracesCanvas.height = uiHeight;
+					tracesCanvas.includeInLayout = true;
 					
 					// Enable / disable the menus
 					applicationMenu.menu[1].menuitem[0].@enabled = false;
@@ -2219,14 +2299,19 @@
 					applicationMenu.menu[1].menuitem[10].@enabled = false;
 				}
 				
-				// Set the menu options
+				// Set the view menu options
 				applicationMenu.menu[1].menuitem[6].@toggled = dontShowProperties;
+				applicationMenu.menu[1].menuitem[11].@toggled = autoRefresh;
+				applicationMenu.menu[1].menuitem[15].@toggled = autoClear;
+								
+				// Set the window menu options
 				applicationMenu.menu[2].menuitem[0].@toggled = showApp;
 				applicationMenu.menu[2].menuitem[1].@toggled = showDisplaytree;
 				applicationMenu.menu[2].menuitem[2].@toggled = showTraces;
 				applicationMenu.menu[2].menuitem[2].@enabled = (showApp || showDisplaytree);
 				applicationMenu.menu[2].menuitem[3].@toggled = showMonitor;
 				applicationMenu.menu[2].menuitem[5].@toggled = alwaysOnTop;
+				applicationMenu.menu[2].menuitem[8].@toggled = autoScroll;
 				
 				if (NativeApplication.supportsSystemTrayIcon) {
 					applicationMenu.menu[2].menuitem[6].@toggled = minimizeToTray;
@@ -2234,9 +2319,6 @@
 					applicationMenu.menu[2].menuitem[6].@enabled = false;
 					applicationMenu.menu[2].menuitem[6].@toggled = false;
 				}
-				
-				// Set the loaded flag
-				uiLoaded = true;
 			}
 			
 			
@@ -2290,38 +2372,34 @@
 			
 			
 			/**
-			 * Converts regular characters to HTML characters
-			 * @param s: The string to convert
-			 */
-			private function htmlEscape(s:String):String
-			{
-				if (s) {
-					// Remove single quotes
-					while(s.indexOf("\'") != -1) {
-						s = s.replace("\'", "&apos;");
-					}
-					// Remove double quotes
-					while(s.indexOf("\"") != -1) {
-						s = s.replace("\"", "&quot;");
-					}
-	                var xml:XML = <a>{s}</a>;
-	                return xml.toXMLString().replace(/(^<a>)|(<\/a>$)|(^<a\/>$)/g, "");
-				} else {
-					return "";
-				}
-			}
-				
-			
-			/**
 			 * Converts HTML characters to regular characters
 			 * @param s: The string to convert
 			 */
 			private function htmlUnescape(s:String):String
 			{
 				if (s) {
+					
+					// Remove html elements
+					if (s.indexOf("&apos;") != -1) {
+						s = s.split("&apos;").join("\'");
+					}
+					if (s.indexOf("&quot;") != -1) {
+						s = s.split("&quot;").join("\"");
+					}
+					if (s.indexOf("&lt;") != -1) {
+						s = s.split("&lt;").join("<");
+					}
+					if (s.indexOf("&gt;") != -1) {
+						s = s.split("&gt;").join(">");
+					}
+					if (s.indexOf("&amp;") != -1) {
+						s = s.split("&amp;").join("&");
+					}
+					
 					var xml:XML = <a/>;
 					xml.replace(0, s);
 					return String(xml);
+					
 				} else {
 					return "";
 				}
@@ -2346,7 +2424,7 @@
 				// This is the bug report URL: http://bugs.adobe.com/jira/browse/SDK-14536
 			}
 			
-
+			
 			/**
 			 * Event handlers
 			 * These can be used for debugging
@@ -2360,7 +2438,7 @@
 			private function securityErrorHandler(event:SecurityErrorEvent):void {}
 			private function statusHandler(event:StatusEvent):void {}
 			
-		]]>	
+		]]>
 	</mx:Script>
 
 
@@ -2400,14 +2478,16 @@
 				<menuitem label="Show Properties" type="check" toggled="true" command="showProperties" key="P" mnemonic="5"/>
 				<menuitem label="Show Methods" type="check" toggled="false" command="showMethods" key="M" mnemonic="5"/>
 				<menuitem label="" type="separator"/>
-				<menuitem label="Don't Show Single Properties" type="check" toggled="false" command="dontShowProperties" key="o" mnemonic="0"/>
+				<menuitem label="Don't show single properties" type="check" toggled="false" command="dontShowProperties" mnemonic="0"/>
 				<menuitem label="" type="separator"/>
-				<menuitem label="Refresh Inspector" command="refreshInspector" mnemonic="9"/>
-				<menuitem label="Refresh Live Application" command="refreshApplication" mnemonic="9"/>
-				<menuitem label="Refresh Display Tree" command="refreshDisplayTree" mnemonic="9"/>
+				<menuitem label="Refresh Live Application" command="refreshApplication" key="R" mnemonic="0"/>
+				<menuitem label="Refresh Display Tree" command="refreshDisplayTree" mnemonic="10"/>
+				<menuitem label="Refresh Inspector" command="refreshInspector" key="r" mnemonic="8"/>
+				<menuitem label="Refresh Inspector automatically" type="check" toggled="false" command="autoRefresh" mnemonic="18"/>
 				<menuitem label="" type="separator"/>
 				<menuitem label="Clear Highlight" command="clearHighlight" key="i" mnemonic="6"/>
 				<menuitem label="Clear Traces" command="clearTraces" key="x" mnemonic="0"/>
+				<menuitem label="Clear Traces on connect" type="check" toggled="false" command="autoClear" mnemonic="18"/>
 			</menu>
 			<menu label="Window" mnemonic="0">
 				<menuitem label="Show Live Application" type="check" toggled="true" command="showApp" key="1" mnemonic="5"/>
@@ -2417,6 +2497,8 @@
 				<menuitem label="" type="separator"/>
 				<menuitem label="Always on top" type="check" toggled="false" command="alwaysOnTop" mnemonic="0"/>
 				<menuitem label="Minimize to tray" type="check" toggled="false" command="minimizeToTray" mnemonic="1"/>
+				<menuitem label="" type="separator"/>
+				<menuitem label="Auto scroll traces" type="check" toggled="false" command="autoScroll" mnemonic="5"/>
 			</menu>
 			<menu label="Help" mnemonic="0">
 				<menuitem label="Help" command="help" mnemonic="0"/>
@@ -2454,65 +2536,63 @@
 	***************************************************************
 	-->
 	<mx:VBox x="0" y="1" width="100%" height="100%" horizontalGap="2" verticalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off">
-		<mx:VDividedBox width="100%" height="100%" minHeight="0" horizontalGap="2" verticalGap="2" liveDragging="true" mouseDown="addResizeListeners()" mouseUp="removeResizeListeners()" horizontalScrollPolicy="off" verticalScrollPolicy="off">
-			<mx:Canvas id="appCanvas" width="100%" height="100%">
-				<mx:HDividedBox width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true" horizontalScrollPolicy="off" verticalScrollPolicy="off">
-					<mx:Canvas id="treeCanvas" width="100%" height="100%" minWidth="200">
-						<mx:Panel width="100%" height="100%"/>
-						<mx:Label text="LIVE APPLICATION" fontWeight="bold" x="10" y="8" fontSize="11"/>
-						<mx:Label id="appFilterLabel" text="Filter" y="8" right="188"/>
-						<mx:TextInput id="appFilterField" height="20" change="filterApplication()" y="6" right="20" width="160"/>			
-						<mx:Tree id="tree" dataProvider="{appFiltered}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" itemOpen="treeOpen(event, 'live')" click="treeClick(event, 'live')" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
-					</mx:Canvas>
-					<mx:Canvas id="displaytreeCanvas" width="100%" height="100%" minWidth="200">
-						<mx:Panel width="100%" height="100%"/>
-						<mx:Label text="DISPLAY TREE" fontWeight="bold" x="10" y="8" fontSize="11"/>		
-						<mx:Tree id="displaytree" dataProvider="{displayAll}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" itemOpen="treeOpen(event, 'tree')" click="treeClick(event, 'tree')" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
-					</mx:Canvas>
-					<mx:Canvas id="inspectorCanvas" width="350" height="100%" minWidth="200">
-						<mx:Panel width="100%" height="100%"/>
-						<mx:Label text="INSPECTOR" fontWeight="bold" fontSize="11" x="10" y="8"/>
-						<mx:Image y="32" source="skin/assets/TabBar-background.png" left="5" right="5" scaleContent="false" height="18"/>
-						<mx:TabBar dataProvider="{viewstack}" itemClick="inspectorSwitch()" x="5" y="32" height="18" toolTip=""/>
-						<mx:ViewStack id="viewstack" left="5" top="50" right="5" bottom="5">
-							<mx:Canvas id="propertiesCanvas" label="PROPERTIES" width="100%" height="100%">
-								<mx:DataGrid id="propertiesGrid" variableRowHeight="true" dataProvider="{properties}" editable="true" left="0" top="0" right="0" bottom="0">
-									<mx:columns>
-										<mx:DataGridColumn headerText="Name" dataField="name" editable="false">
-											<mx:itemRenderer>
-												<mx:Component>
-													<mx:HBox horizontalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
-														<mx:Image source="{data['icon']}" width="16" height="16"/>
-														<mx:Label text="{data['name']}" width="100%" color="#000000" toolTip="{'Type: ' + data['type']}"/>
-													</mx:HBox>
-												</mx:Component>
-											</mx:itemRenderer>
-										</mx:DataGridColumn>
-										<mx:DataGridColumn headerText="Value" wordWrap="true" dataField="value" editable="true" itemEditor="components.PropertyEditor" editorDataField="newValue"/>
-									</mx:columns>
-								</mx:DataGrid>
-							</mx:Canvas>
-							<mx:Canvas id="functionsCanvas" label="METHODS" width="100%" height="100%">
-								<mx:DataGrid id="functionsGrid" dataProvider="{functions}" doubleClickEnabled="true" doubleClick="functionsClick(event)" left="0" top="0" right="0" bottom="0">
-									<mx:columns>
-										<mx:DataGridColumn headerText="Name" dataField="name">
-											<mx:itemRenderer>
-												<mx:Component>
-													<mx:HBox doubleClickEnabled="true" horizontalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
-														<mx:Image source="{data['icon']}" width="16" height="16"/>
-														<mx:Label text="{data['name']}" width="100%" color="#000000" toolTip="{'Parameters: ' + data['args']}"/>
-													</mx:HBox>
-												</mx:Component>			
-											</mx:itemRenderer>
-										</mx:DataGridColumn>
-									</mx:columns>
-								</mx:DataGrid>
-							</mx:Canvas>
-						</mx:ViewStack>
-					</mx:Canvas>
-				</mx:HDividedBox>
-			</mx:Canvas>
-			<mx:Canvas id="tracesCanvas" width="100%" height="250">
+		<mx:VDividedBox width="100%" height="100%" minHeight="0" horizontalGap="2" verticalGap="2" liveDragging="true" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+			<mx:HDividedBox id="appCanvas" width="100%" height="100%" horizontalGap="2" verticalGap="2" liveDragging="true" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+				<mx:Canvas id="treeCanvas" width="100%" height="100%" minWidth="100" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+					<mx:Panel width="100%" height="100%"/>
+					<mx:Label text="LIVE APPLICATION" fontWeight="bold" x="10" y="8" fontSize="11"/>
+					<mx:Label id="appFilterLabel" text="Filter" y="8" right="188"/>
+					<mx:TextInput id="appFilterField" height="20" change="filterApplication()" y="6" right="20" width="160"/>			
+					<mx:Tree id="tree" dataProvider="{appFiltered}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" itemOpen="treeOpen(event, 'live')" click="treeClick(event, 'live')" focusIn="refreshApplication()" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
+				</mx:Canvas>
+				<mx:Canvas id="displaytreeCanvas" width="100%" height="100%" minWidth="100" horizontalScrollPolicy="off" verticalScrollPolicy="off" includeInLayout="false">
+					<mx:Panel width="100%" height="100%"/>
+					<mx:Label text="DISPLAY TREE" fontWeight="bold" x="10" y="8" fontSize="11"/>		
+					<mx:Tree id="displaytree" dataProvider="{displayAll}" iconField="@icon" labelField="@label" showRoot="false" openDuration="0" itemOpen="treeOpen(event, 'tree')" click="treeClick(event, 'tree')" defaultLeafIcon="@Embed(source='icons/bullet_blue.png')" folderOpenIcon="@Embed(source='icons/folder.png')" folderClosedIcon="@Embed(source='icons/folder.png')" left="5" top="32" right="5" bottom="5"/>
+				</mx:Canvas>
+				<mx:Canvas id="inspectorCanvas" width="350" height="100%" minWidth="200" horizontalScrollPolicy="off" verticalScrollPolicy="off">
+					<mx:Panel width="100%" height="100%"/>
+					<mx:Label text="INSPECTOR" fontWeight="bold" fontSize="11" x="10" y="8"/>
+					<mx:Image y="32" source="skin/assets/TabBar-background.png" left="5" right="5" scaleContent="false" height="18"/>
+					<mx:TabBar dataProvider="{viewstack}" itemClick="inspectorSwitch()" x="5" y="32" height="18" toolTip=""/>
+					<mx:ViewStack id="viewstack" left="5" top="50" right="5" bottom="5">
+						<mx:Canvas id="propertiesCanvas" label="PROPERTIES" width="100%" height="100%">
+							<mx:DataGrid id="propertiesGrid" variableRowHeight="true" dataProvider="{properties}" editable="true" left="0" top="0" right="0" bottom="0">
+								<mx:columns>
+									<mx:DataGridColumn headerText="Name" dataField="name" editable="false">
+										<mx:itemRenderer>
+											<mx:Component>
+												<mx:HBox horizontalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+													<mx:Image source="{data['icon']}" width="16" height="16"/>
+													<mx:Label text="{data['name']}" width="100%" color="#000000" toolTip="{'Type: ' + data['type']}"/>
+												</mx:HBox>
+											</mx:Component>
+										</mx:itemRenderer>
+									</mx:DataGridColumn>
+									<mx:DataGridColumn headerText="Value" wordWrap="true" dataField="value" editable="true" itemEditor="components.PropertyEditor" editorDataField="newValue"/>
+								</mx:columns>
+							</mx:DataGrid>
+						</mx:Canvas>
+						<mx:Canvas id="functionsCanvas" label="METHODS" width="100%" height="100%">
+							<mx:DataGrid id="functionsGrid" dataProvider="{functions}" doubleClickEnabled="true" doubleClick="functionsClick(event)" left="0" top="0" right="0" bottom="0">
+								<mx:columns>
+									<mx:DataGridColumn headerText="Name" dataField="name">
+										<mx:itemRenderer>
+											<mx:Component>
+												<mx:HBox doubleClickEnabled="true" horizontalGap="2" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+													<mx:Image source="{data['icon']}" width="16" height="16"/>
+													<mx:Label text="{data['name']}" width="100%" color="#000000" toolTip="{'Parameters: ' + data['args']}"/>
+												</mx:HBox>
+											</mx:Component>	
+										</mx:itemRenderer>
+									</mx:DataGridColumn>
+								</mx:columns>
+							</mx:DataGrid>
+						</mx:Canvas>
+					</mx:ViewStack>
+				</mx:Canvas>
+			</mx:HDividedBox>
+			<mx:Canvas id="tracesCanvas" width="100%" height="250" minHeight="80">
 				<mx:Panel width="100%" height="100%"/>
 				<mx:Label text="TRACES" fontWeight="bold" x="10" y="8" fontSize="11"/>
 				<mx:TextInput id="tracesFilterField" height="20" width="160" change="filterTraces()" y="6" right="102"/>
@@ -2525,43 +2605,52 @@
 							<mx:itemRenderer>
 								<mx:Component>
 									<mx:HBox doubleClickEnabled="true" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
-										<mx:Label text="{data['line']}" color="{data['color']}"/>
+										<mx:Label text="{data['line']}" color="{data['color']}" width="100%" paddingLeft="5" paddingRight="5"/>
 									</mx:HBox>
-								</mx:Component>			
+								</mx:Component>		
 							</mx:itemRenderer>
 						</mx:DataGridColumn>
 						<mx:DataGridColumn headerText="Time" dataField="time" width="120">
 							<mx:itemRenderer>
 								<mx:Component>
 									<mx:HBox doubleClickEnabled="true" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
-										<mx:Label text="{data['time']}" color="{data['color']}"/>
+										<mx:Label text="{data['time']}" color="{data['color']}" width="100%" paddingLeft="5" paddingRight="5"/>
 									</mx:HBox>
-								</mx:Component>			
+								</mx:Component>		
 							</mx:itemRenderer>
 						</mx:DataGridColumn>
 						<mx:DataGridColumn headerText="Target" dataField="target" width="300">
 							<mx:itemRenderer>
 								<mx:Component>
 									<mx:HBox doubleClickEnabled="true" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
-										<mx:Label text="{data['target']}" color="{data['color']}"/>
+										<mx:Label text="{data['target']}" color="{data['color']}" width="100%" paddingLeft="5" paddingRight="5"/>
 									</mx:HBox>
-								</mx:Component>			
+								</mx:Component>		
 							</mx:itemRenderer>
 						</mx:DataGridColumn>
 						<mx:DataGridColumn headerText="Message" dataField="message">
 							<mx:itemRenderer>
 								<mx:Component>
 									<mx:HBox doubleClickEnabled="true" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
-										<mx:Label text="{data['message']}" color="{data['color']}" width="100%"/>
+										<mx:Label text="{data['message']}" color="{data['color']}" width="100%" paddingLeft="5" paddingRight="5"/>
 									</mx:HBox>
-								</mx:Component>			
+								</mx:Component>		
+							</mx:itemRenderer>
+						</mx:DataGridColumn>
+						<mx:DataGridColumn headerText="Memory" dataField="target" width="120">
+							<mx:itemRenderer>
+								<mx:Component>
+									<mx:HBox doubleClickEnabled="true" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+										<mx:Label text="{data['memory']}" color="{data['color']}" textAlign="right" width="100%" paddingLeft="5" paddingRight="5"/>
+									</mx:HBox>
+								</mx:Component>		
 							</mx:itemRenderer>
 						</mx:DataGridColumn>
 					</mx:columns>
 				</mx:DataGrid>
 			</mx:Canvas>
 		</mx:VDividedBox>
-		<mx:Canvas id="monitorCanvas" width="100%" height="90">
+		<mx:Canvas id="monitorCanvas" width="100%" height="120">
 			<mx:Panel width="100%" height="100%"/>
 			<mx:Label text="MONITOR" fontWeight="bold" x="10" y="8" fontSize="11"/>
 			<components:Monitor id="monitor" left="3" top="30" right="3" bottom="3"/>

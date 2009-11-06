@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<mx:Box xmlns:mx="http://www.adobe.com/2006/mxml" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%">
+<mx:Box xmlns:mx="http://www.adobe.com/2006/mxml" horizontalScrollPolicy="off" verticalScrollPolicy="off" width="100%" keyDown="myKeyDownHandler(event)" keyUp="myKeyUpHandler(event)">
 
 	<mx:Script>
 		<![CDATA[
@@ -17,6 +17,50 @@
 			private const TYPE_UINT					:String = "uint";
 			
 			
+			// Shift key
+			private var shift:Boolean = false;
+			
+			
+			/**
+			 * Keyboard button down handler
+			 */
+			private function myKeyDownHandler(event:KeyboardEvent):void
+			{
+				shift = event.shiftKey;
+
+				// Check step size
+				if (shift) {
+					inputNumber.stepSize = 1;
+					inputInt.stepSize = 1;
+					inputUint.stepSize = 1;
+				} else {
+					inputNumber.stepSize = 0.01;
+					inputInt.stepSize = 1;
+					inputUint.stepSize = 1;
+				}
+			}
+			
+			
+			/**
+			 * Keyboard button up handler
+			 */		
+			private function myKeyUpHandler(event:KeyboardEvent):void
+			{
+				shift = event.shiftKey;
+
+				// Check step size
+				if (shift) {
+					inputNumber.stepSize = 1;
+					inputInt.stepSize = 1;
+					inputUint.stepSize = 1;
+				} else {
+					inputNumber.stepSize = 0.01;
+					inputInt.stepSize = 1;
+					inputUint.stepSize = 1;
+				}
+			}
+		
+		
 			/**
 			 * Set the data in the field
 			 * @param value: The value object
