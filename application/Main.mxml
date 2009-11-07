@@ -18,7 +18,7 @@
 	@author		Ferdi Koomen, Joost Harts
 	@company	De Monsters
 	@link 		http://www.deMonsterDebugger.com
-	@version 	2.5 (stable)
+	@version 	2.5.1 (stable)
 	
 	
 	Special thanks to Arjan van Wijk and Thijs Broerse from MediaMonks.nl
@@ -207,7 +207,7 @@
 			
 			
 			// Current version
-			private const VERSION:String = "2.5";
+			private const VERSION:String = "2.51";
 			
 			
 			// The current selected tree item target

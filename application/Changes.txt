@@ -29,12 +29,15 @@ Version 2.04
 - Added a new function called snapshot()
 - Added support for multidimensional and mixed arrays
 
-Version 2.50
+Version 2.5
 - All eventlisteners are now weak references
 - Grammar checks in source code
 - Solved all warnings in the client class
 - All methods are protected instead of private
 - Messages are now bufferd and send on connect
+
+Version 2.51
+- Added constants that where accidentally removed in 2.5
 
 
 
@@ -79,7 +82,7 @@ Version 2.04
 - Added a window to display snapshots
 - Added a DisplayList drilldown view
 
-Version 2.50
+Version 2.5
 - Build with the new Flex 3.4 SDK
 - Focus on a live application node refreshes the node
 - Quotes are now displayed correctly
@@ -90,3 +93,6 @@ Version 2.50
 - Added auto clear the traces on connect
 - Added auto update for the inspector
 - Added a new overview in the memory monitor
+
+Version 2.51
+- Only a quick fix in the client class

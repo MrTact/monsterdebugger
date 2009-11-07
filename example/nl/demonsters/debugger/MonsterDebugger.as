@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen, Joost Harts
  * @company 	De Monsters
  * @link 		http://www.deMonsterDebugger.com
- * @version 	2.5 (stable)
+ * @version 	2.5.1 (stable)
  * 
  *
  * Special thanks to Arjan van Wijk and Thijs Broerse from MediaMonks.nl
@@ -80,6 +80,12 @@ package nl.demonsters.debugger
 		// The allow domain for the local connection
 		// * = Allow communication with all domains
 		private const ALLOWED_DOMAIN			:String = "*";
+
+
+		// Error colors
+		public static const COLOR_NORMAL		:uint = 0x111111;
+		public static const COLOR_ERROR			:uint = 0xFF0000;
+		public static const COLOR_WARNING		:uint = 0xFF3300;
 
 
 		// Commands
@@ -162,7 +168,7 @@ package nl.demonsters.debugger
 		
 		
 		// Version
-		protected const VERSION					:Number = 2.5;
+		protected const VERSION					:Number = 2.51;
 		
 		
 		// FPS interval timer
