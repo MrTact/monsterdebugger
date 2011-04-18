@@ -103,42 +103,53 @@ package controllers.panels
 			target = StringUtil.trim(target).toLowerCase();
 			label = StringUtil.trim(label).toLowerCase();
 			person = StringUtil.trim(person).toLowerCase();
-			var add:Boolean = true;
+			
+			trace(person, label);
+			
 			var i:int;
 			
-			if (message != "") {
-				for (i = 0; i < _panel.filter.words.length; i++) {
-					if (message.indexOf(_panel.filter.words[i]) == -1) {
-						add = false;
-					}
-				}
-				if (add) return true;
-			}
-			if (target != "") {
-				for (i = 0; i < _panel.filter.words.length; i++) {
-					if (target.indexOf(_panel.filter.words[i]) == -1) {
-						add = false;
-					}
-				}
-				if (add) return true;
-			}
-			if (label != "") {
-				for (i = 0; i < _panel.filter.words.length; i++) {
-					if (label.indexOf(_panel.filter.words[i]) == -1) {
-						add = false;
-					}
-				}
-				if (add) return true;
-			}
-			if (person != "") {
-				for (i = 0; i < _panel.filter.words.length; i++) {
-					if (person.indexOf(_panel.filter.words[i]) == -1) {
-						add = false;
-					}
-				}
-				if (add) return true;
+			// Clone words
+			var words:Array = [];
+			for (i = 0; i < _panel.filter.words.length; i++) {
+				words[i] = _panel.filter.words[i];
 			}
 			
+			if (message != "") {
+				for (i = 0; i < words.length; i++) {
+					if (message.indexOf(words[i]) != -1) {
+						words.splice(i, 1);
+						i--;
+					}
+				}
+			}
+			if (words.length == 0) return true;
+			if (target != "") {
+				for (i = 0; i < words.length; i++) {
+					if (target.indexOf(words[i]) != -1) {
+						words.splice(i, 1);
+						i--;
+					}
+				}
+			}
+			if (words.length == 0) return true;
+			if (label != "") {
+				for (i = 0; i < words.length; i++) {
+					if (label.indexOf(words[i]) != -1) {
+						words.splice(i, 1);
+						i--;
+					}
+				}
+			}
+			if (words.length == 0) return true;
+			if (person != "") {
+				for (i = 0; i < words.length; i++) {
+					if (person.indexOf(words[i]) != -1) {
+						words.splice(i, 1);
+						i--;
+					}
+				}
+			}
+			if (words.length == 0) return true;
 			return false;
 		}
 		

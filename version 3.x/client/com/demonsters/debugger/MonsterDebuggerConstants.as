@@ -81,7 +81,7 @@ package com.demonsters.debugger
 		internal static const TYPE_BOOLEAN				:String = "Boolean";
 		internal static const TYPE_NUMBER				:String = "Number";
 		internal static const TYPE_OBJECT				:String = "Object";
-		internal static const TYPE_VECTOR				:String = "Vector";
+		internal static const TYPE_VECTOR				:String = "Vector.";
 		internal static const TYPE_STRING				:String = "String";
 		internal static const TYPE_INT					:String = "int";
 		internal static const TYPE_UINT					:String = "uint";

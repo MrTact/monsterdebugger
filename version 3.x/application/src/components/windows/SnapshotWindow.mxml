@@ -54,7 +54,12 @@
 				MonsterDebuggerUtils.checkWindow(nativeWindow);
 				visible = true;
 				activate();
-
+				
+				// Set on top
+				if (MonsterDebuggerMenu.mainWindow.alwaysInFront) {
+					alwaysInFront = true;
+				}
+				
 				// Add event listener to the stage
 				stage.addEventListener(KeyboardEvent.KEY_UP, function(event:KeyboardEvent):void {
 					if (event.charCode == 27) {
@@ -120,14 +125,14 @@
 	</fx:Style>
 	<fx:Declarations>
 		<fx:XML id="xmlMenuData" format="e4x">
-			<xmlRoot>
-				<menuitem label="File">
-					<menuitem label="Save" controlKey="true" keyEquivalent="s"/>
-					<menuitem label="Close"/>
-				</menuitem>
-			</xmlRoot>
+			<menubar>
+				<menu label="File">
+					<menuitem label="Save" ctrlKey="true" key="s"/>
+					<menuitem label="Close" ctrlKey="true" key="w"/>
+				</menu>
+			</menubar>
 		</fx:XML>
-		<mx:FlexNativeMenu id="xmlBasedMenu" showRoot="false" labelField="@label" dataProvider="{xmlMenuData}" itemClick="menuHandler(event)" menuShow="true"/>
+		<mx:FlexNativeMenu id="xmlBasedMenu" showRoot="false" labelField="@label" keyEquivalentField="@key" dataProvider="{xmlMenuData}" itemClick="menuHandler(event)" menuShow="true"/>
 	</fx:Declarations>
 	<mx:Canvas top="0" left="0" right="0" bottom="0" verticalScrollPolicy="auto" horizontalScrollPolicy="auto" verticalScrollBarStyleName="customScrollBarStyle" horizontalScrollBarStyleName="customScrollBarStyle">
 		<mx:Canvas id="imageCanvas" width="0" height="0" visible="true"/>

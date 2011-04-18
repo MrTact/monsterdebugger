@@ -24,6 +24,7 @@
 			import spark.events.IndexChangeEvent;
 			import com.demonsters.debugger.MonsterDebuggerConstants;
 			import mx.collections.ArrayCollection;
+			import mx.controls.Label;
 			import mx.controls.NumericStepper;
 
 
@@ -47,7 +48,24 @@
 			override public function set data(value:Object):void {
 				super.data = value;
 				newValue = value["value"];
-				switch(data["type"]) {
+				
+				// Save the needed vars
+				var edit:Boolean = value["edit"];
+				var type:String = value["type"];
+				
+				// If not editable, place a label field
+				if (!edit) {
+					var label:Label = new Label();
+					label.setStyle("paddingLeft", 5);
+					label.setStyle("paddingRight", 5);
+					label.top = 2;
+					label.truncateToFit = true;
+					label.text = data["value"];
+					addElement(label);
+					return;
+				}
+				
+				switch(type) {
 					case MonsterDebuggerConstants.TYPE_BOOLEAN:
 						var comboData:ArrayCollection = new ArrayCollection(["true", "false"]);
 						comboBox = new DropDownList();

@@ -712,7 +712,7 @@ package com.demonsters.debugger
 				nodeXML.@target 		= target;
 				rootXML.appendChild(nodeXML);
 			}
-			else if (xml.name() == null)
+			else if ("name" in xml && xml.name() == null)
 			{
 				// Only a text value
 				nodeXML = new XML("<node/>");
@@ -726,7 +726,7 @@ package com.demonsters.debugger
 				nodeXML.@target 		= target;
 				rootXML.appendChild(nodeXML);
 			}
-			else if (xml.hasSimpleContent())
+			else if ("hasSimpleContent" in xml && xml.hasSimpleContent())
 			{
 				// Node with one text value and possible attributes
 				nodeXML = new XML("<node/>");
@@ -1077,7 +1077,12 @@ package com.demonsters.debugger
 				var displayObjects:Array = [];
 				childLength = displayObject.numChildren;
 				for (i = 0; i < childLength; i++) {
-					var child:DisplayObject = displayObject.getChildAt(i);
+					var child:DisplayObject = null;
+					try {
+						child = displayObject.getChildAt(i);
+					} catch (e1:Error) {
+						//
+					}
 					if (child != null) {
 						itemXML = MonsterDebuggerDescribeType.get(child);
 						itemType = parseType(itemXML.@name);
@@ -1127,7 +1132,7 @@ package com.demonsters.debugger
 					} else {
 						item = object[itemName];
 					}
-				} catch (e:Error) {
+				} catch (e2:Error) {
 					item = null;
 				}
 				

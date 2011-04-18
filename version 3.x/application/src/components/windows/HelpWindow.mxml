@@ -7,6 +7,7 @@
 		<![CDATA[
 
 			import components.panels.HTMLPanel;
+			import com.demonsters.debugger.MonsterDebuggerMenu;
 			import com.demonsters.debugger.MonsterDebuggerUtils;
 
 
@@ -27,7 +28,12 @@
 				MonsterDebuggerUtils.checkWindow(nativeWindow);
 				visible = true;
 				activate();
-
+				
+				// Set on top
+				if (MonsterDebuggerMenu.mainWindow.alwaysInFront) {
+					alwaysInFront = true;
+				}
+				
 				// Add event listener to the stage
 				stage.addEventListener(KeyboardEvent.KEY_UP, function(event:KeyboardEvent):void {
 					if (event.charCode == 27) {

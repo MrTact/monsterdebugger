@@ -52,6 +52,8 @@ package com.demonsters.debugger
 	import flash.system.Security;
 	import flash.utils.ByteArray;
 	import flash.utils.Timer;
+	
+	
 	internal class MonsterDebuggerConnectionDefault implements IMonsterDebuggerConnection
 	{
 		

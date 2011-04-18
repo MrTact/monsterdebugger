@@ -45,7 +45,6 @@ package com.demonsters.debugger
 
 	import mx.core.UIComponent;
 	import mx.logging.Log;
-
 	import flash.display.DisplayObject;
 
 
@@ -125,7 +124,6 @@ package com.demonsters.debugger
 
 
 import com.demonsters.debugger.MonsterDebugger;
-
 import mx.logging.AbstractTarget;
 import mx.logging.ILogger;
 import mx.logging.LogEvent;

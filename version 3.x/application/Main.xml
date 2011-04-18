@@ -3,7 +3,7 @@
 	<id>com.demonsters.debugger</id>
 	<filename>Monster Debugger</filename>
 	<name>Monster Debugger</name>
-	<versionNumber>3.0</versionNumber>
+	<versionNumber>3.01</versionNumber>
 	<description>Open source debugger for Adobe Flash, Flex and AIR projects</description>
 	<copyright>Copyright 2011, De Monsters</copyright>
 	<initialWindow>

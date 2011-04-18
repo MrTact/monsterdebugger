@@ -3,8 +3,6 @@ package controllers.home
 	import components.home.Home;
 	import components.home.HomeRecentItem;
 	import components.tabs.TabContainer;
-	import skins.button.recentButtons.As3Button;
-	import skins.button.recentButtons.FlexButton;
 	import spark.events.IndexChangeEvent;
 	import com.demonsters.debugger.MonsterDebuggerClient;
 	import com.demonsters.debugger.MonsterDebuggerConstants;
@@ -170,7 +168,7 @@ package controllers.home
 				exampleAS3 += '        ' + '\n';
 				exampleAS3 += '            // Start the MonsterDebugger' + '\n';
 				exampleAS3 += '            MonsterDebugger.initialize(this);' + '\n';
-				exampleAS3 += '            MonsterDebugger.trace("Hello World!");' + '\n';
+				exampleAS3 += '            MonsterDebugger.trace(this, "Hello World!");' + '\n';
 				exampleAS3 += '        }' + '\n';
 				exampleAS3 += '    }' + '\n';
 				exampleAS3 += '}';
@@ -190,7 +188,7 @@ package controllers.home
 				exampleMXML += '            private function onCreationComplete():void {' + '\n';
 				exampleMXML += '                ' + '\n';
 				exampleMXML += '                // Monster Debugger trace message' + '\n';
-				exampleMXML += '                monsterDebugger.trace("Hello World!");' + '\n';
+				exampleMXML += '                monsterDebugger.trace(this, "Hello World!");' + '\n';
 				exampleMXML += '                ' + '\n';
 				exampleMXML += '                // Flex trace message' + '\n';
 				exampleMXML += '                var logger:ILogger = Log.getLogger("Main.mxml");' + '\n';

@@ -74,7 +74,7 @@
 					</fx:Component>
 				</mx:itemRenderer>
 			</mx:DataGridColumn>
-			<mx:DataGridColumn headerText="user" dataField="user" editable="false" width="130">
+			<mx:DataGridColumn headerText="person" dataField="person" editable="false" width="130">
 				<mx:itemRenderer>
 					<fx:Component>
 						<mx:Label text="{data['person']}" color="{data['color']}" paddingLeft="5" paddingRight="5" truncateToFit="true"/>

@@ -3,6 +3,7 @@
 	<fx:Script>
 		<![CDATA[
 
+			import com.demonsters.debugger.MonsterDebuggerMenu;
 			import com.demonsters.debugger.MonsterDebuggerUtils;
 			
 
@@ -27,6 +28,11 @@
 				visible = true;
 				activate();
 				
+				// Set on top
+				if (MonsterDebuggerMenu.mainWindow.alwaysInFront) {
+					alwaysInFront = true;
+				}
+				
 				// Add event listener to the stage
 				stage.addEventListener(KeyboardEvent.KEY_UP, function(event:KeyboardEvent):void {
 					if (event.charCode == 27) {
@@ -43,7 +49,7 @@
 	<mx:Text width="320" top="20" left="20" fontSize="11" selectable="false">
 		<mx:htmlText>
 <![CDATA[
-<font size="16"><b>Monster Debugger 3.0</b></font>
+<font size="16"><b>Monster Debugger 3.01</b></font>
 
 Monster Debugger is an open source Adobe Flash, Flex and AIR debugger made by Digital Creative Agency De Monsters from Amsterdam. Monster Debugger is created in ActionScript 3 and Adobe AIR.
 

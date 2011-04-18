@@ -1,7 +1,5 @@
 package controllers.panels
 {
-	import com.demonsters.debugger.MonsterDebuggerMenu;
-
 	import components.Filter;
 	import components.panels.ApplicationPanel;
 	import events.PanelEvent;
@@ -10,6 +8,7 @@ package controllers.panels
 	import mx.events.FlexEvent;
 	import mx.events.ListEvent;
 	import mx.events.TreeEvent;
+	import mx.utils.StringUtil;
 	import flash.events.ContextMenuEvent;
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
@@ -125,33 +124,14 @@ package controllers.panels
 			// Variables for the loops
 			var add:Boolean = true;
 			var temp:*;
-
+			var i:int;
+			var n:int;
+			
 			// Loop through the nodes
-			for (var i:int = 0; i < children.length(); i++) {
+			for (i = 0; i < children.length(); i++) {
 				
-				// Get the data
-				var name:String = String(children[i].@name).toLowerCase();
-				var value:String = String(children[i].@value).toLowerCase();
-				var label:String = String(children[i].@label).toLowerCase();
-				var type:String = String(children[i].@type).toLowerCase();
-				add = true;
-				
-				// Check if a filter term is given
-				if (_panel.filter.words.length > 0) {
-					for (var n:int = 0; n < _panel.filter.words.length; n++) {
-						if (children[i].children().length() == 0) {
-							if (name.indexOf(_panel.filter.words[n]) == -1 
-							&& value.indexOf(_panel.filter.words[n]) == -1 
-							&& label.indexOf(_panel.filter.words[n]) == -1 
-							&& type.indexOf(_panel.filter.words[n]) == -1) {
-								add = false;
-							}
-						}
-					}
-				}
-
 				// Add the node if needed
-				if (add) {
+				if (checkFilter(children[i])) {
 					if (children[i].children().length() > 0) {
 						
 						// The node has children
@@ -175,8 +155,71 @@ package controllers.panels
 			// Return the xml
 			return xml;
 		}
+		
+		
+		/**
+		 * Loop through the search terms and compare strings
+		 */
+		private function checkFilter(item:*):Boolean
+		{
+			// Return if it's a folder
+			if (item.children().length() != 0) {
+				return true;
+			}
+			
+			// Get the data
+			var name:String = String(item.@name);
+			var value:String = String(item.@value);
+			var label:String = String(item.@label);
+			var type:String = String(item.@type);
+			if (name == null) name = "";
+			if (value == null) value = "";
+			if (label == null) label = "";
+			if (type == null) type = "";
+			name = StringUtil.trim(name).toLowerCase();
+			value = StringUtil.trim(value).toLowerCase();
+			label = StringUtil.trim(label).toLowerCase();
+			type = StringUtil.trim(type).toLowerCase();
 
-
+			var i:int;
+			
+			// Clone words
+			var words:Array = [];
+			for (i = 0; i < _panel.filter.words.length; i++) {
+				words[i] = _panel.filter.words[i];
+			}
+			
+			if (name != "") {
+				for (i = 0; i < words.length; i++) {
+					if (name.indexOf(words[i]) != -1) {
+						words.splice(i, 1);
+						i--;
+					}
+				}
+			}
+			if (words.length == 0) return true;
+			if (value != "") {
+				for (i = 0; i < words.length; i++) {
+					if (value.indexOf(words[i]) != -1) {
+						words.splice(i, 1);
+						i--;
+					}
+				}
+			}
+			if (words.length == 0) return true;
+			if (label != "") {
+				for (i = 0; i < words.length; i++) {
+					if (label.indexOf(words[i]) != -1) {
+						words.splice(i, 1);
+						i--;
+					}
+				}
+			}
+			if (words.length == 0) return true;
+			return false;
+		}
+		
+		
 		private function onShowInspect(e:ListEvent):void
 		{
 			if (e.rowIndex == _panel.tree.selectedIndex) {

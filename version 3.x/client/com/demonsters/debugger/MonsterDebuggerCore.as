@@ -69,7 +69,7 @@ package com.demonsters.debugger
 	{
 		
 		// Monitor and highlight interval timer
-		private static const MONITOR_UPDATE:int = 500;
+		private static const MONITOR_UPDATE:int = 1000;
 		private static const HIGHLITE_COLOR:uint = 0x3399FF;
 		
 		
@@ -256,8 +256,8 @@ package com.demonsters.debugger
 						target:		String(caller), 
 						reference:	MonsterDebuggerUtils.getReferenceID(caller),
 						bytes:		bytes, 
-						width:		object.width, 
-						height:		object.height,
+						width:		bitmapData.width, 
+						height:		bitmapData.height,
 						person:		person,
 						label:		label
 					};
@@ -367,7 +367,7 @@ package com.demonsters.debugger
 					fileLocation = unescape(Stage(_base["stage"]).loaderInfo.url);
 				}
 			}
-
+			
 			// Check for browser
 			if (playerType == "ActiveX" || playerType == "PlugIn") {
 				if (ExternalInterface.available) {
@@ -409,6 +409,11 @@ package com.demonsters.debugger
 				} else {
 					fileTitle = fileLocation;
 				}
+			}
+			
+			// Default
+			if (fileTitle == "") {
+				fileTitle = "Application";
 			}
 			
 			// Create the data

@@ -8,6 +8,7 @@
 
 			import components.panels.window.MethodWindowMethod;
 			import components.panels.window.MethodWindowReturn;
+			import com.demonsters.debugger.MonsterDebuggerMenu;
 			import com.demonsters.debugger.MonsterDebuggerUtils;
 
 
@@ -24,9 +25,6 @@
 
 			private function onCreationComplete():void
 			{
-				MonsterDebuggerUtils.checkWindow(nativeWindow);
-				visible = true;
-				
 				methodWindow = new MethodWindowMethod();
 				methodWindow.data = _item;
 				methodWindow.name = "Method: " + _item.name;
@@ -35,12 +33,19 @@
 				returnWindow = new MethodWindowReturn();
 				returnWindow.name = "Return: " + _item.returnType;
 				rightWindow.addPanelItem(returnWindow);
-
+				
+				MonsterDebuggerUtils.checkWindow(nativeWindow);
+				visible = true;
 				activate();
-
+				
+				// Set on top
+				if (MonsterDebuggerMenu.mainWindow.alwaysInFront) {
+					alwaysInFront = true;
+				}
+				
 				// Add event listener to the stage
 				stage.addEventListener(KeyboardEvent.KEY_UP, function(event:KeyboardEvent):void {
-					if (event.charCode == 27 || event.keyCode == 87) {
+					if (event.charCode == 27) {
 						close();
 						// The users pressed ESC
 					}

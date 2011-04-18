@@ -56,7 +56,7 @@ package com.demonsters.debugger
 		
 		
 		// Version number
-		internal static const VERSION:Number = 3.0;
+		internal static const VERSION:Number = 3.01;
 		
 
 		/**
@@ -147,10 +147,10 @@ package com.demonsters.debugger
 		 * MonsterDebugger.trace("myStaticClass", myObject);<br>
 		 * </code>
 		 * 
-		 * @param caller: 			The caller of the trace. We suggest you always use the keyword “this”. 
+		 * @param caller: 			The caller of the trace. We suggest you always use the keyword "this". 
 		 * 							The caller is displayed in the desktop application to easily identify 
 		 * 							your traces on instance level. Note: if you use this function within a 
-		 * 							static class, use a string as caller like: “MyStaticClass”.
+		 * 							static class, use a string as caller like: "MyStaticClass".
 		 * @param object: 			The object to trace, this can be anything. For instance a String, 
 		 * 							Number or Array but also complex items like a custom class, 
 		 * 							multidimensional arrays.
@@ -180,15 +180,16 @@ package com.demonsters.debugger
 		
 		/**
 		 * This is a copy of the classic Flash trace function where you can supply a comma separated 
-		 * list of objects to trace. It will call the toString() function for every object you supply in 
-		 * the arguments (… args). This will not give you a tree based output like MonsterDebugger.trace() 
-		 * but rather a classic string based output like in the Flash IDE console. This can be useful when 
-		 * tracing multiple properties at once like: MonsterDebugger.log(“position”, myObject.x, myObject.y).
+		 * list of objects to trace. It will call the MonsterDebugger.trace() function for every object you 
+		 * supply in the arguments (... args). This can be useful when tracing multiple properties at once 
+		 * like: MonsterDebugger.log(x, y, width, height). But it can also be handy for tracing events 
+		 * as can be seen in the example.
 		 * 
 		 * @example
 		 * <code>
-		 * MonsterDebugger.log("error");<br>
-		 * MonsterDebugger.log("size", x, y, width, height);<br>
+		 * MonsterDebugger.log(x, y, width, height);<br>
+		 * addEventListener(Event.COMPLETE, MonsterDebugger.log);<br>
+		 * addEventListener(MouseEvent.CLICK, MonsterDebugger.log);<br>
 		 * </code>
 		 * 
 		 * @param args: A list of objects or properties to trace. 
@@ -196,11 +197,49 @@ package com.demonsters.debugger
 		public static function log(... args):void
 		{
 			if (_initialized && _enabled) {
-				var object:Array = [];
-				for (var i:int = 0; i < args.length; i++) {
-					object[object.length] = String(args[i]);
+				
+				// Return if needed
+				if (args.length == 0) {
+					return;
 				}
-				MonsterDebuggerCore.trace("log", object.join(", "), "", "", 0x000000, 5);
+				
+				// Target
+				var target:String = "Log";
+				
+				// Generate an error
+				try {
+					throw(new Error());
+				} catch (e:Error) {
+					var stack:String = e.getStackTrace();					
+					if (stack != null && stack != "") {
+						stack = stack.split("\t").join("");
+						var lines:Array = stack.split("\n");
+						if (lines.length > 2) {
+							lines.shift(); // Error
+							lines.shift(); // MonsterDebugger
+							var s:String = lines[0];
+							s = s.substring(3, s.length);
+							var bracketIndex:int = s.indexOf("[");
+							var methodIndex:int = s.indexOf("/");
+							if (bracketIndex == -1) bracketIndex = s.length;
+							if (methodIndex == -1) methodIndex = bracketIndex;
+							target = MonsterDebuggerUtils.parseType(s.substring(0, methodIndex));
+							if (target == "<anonymous>") {
+								target = "";
+							}
+							if (target == "") {
+								target = "Log";
+							}
+						}
+					}
+				}
+
+				// Send
+				if (args.length == 1) {
+					MonsterDebuggerCore.trace(target, args[0], "", "", 0x000000, 5);
+				} else {
+					MonsterDebuggerCore.trace(target, args, "", "", 0x000000, 5);
+				}
 			}
 		}
 		
@@ -216,10 +255,10 @@ package com.demonsters.debugger
 		 * MonsterDebugger.snapshot(this, myBitmap, "joe", "interface");<br>
 		 * </code>
 		 * 
-		 * @param caller: 	The caller of the snapshot. We suggest you always use the keyword “this”. 
+		 * @param caller: 	The caller of the snapshot. We suggest you always use the keyword "this". 
 		 * 					The caller is displayed in the desktop application to easily identify your 
 		 * 					snapshots on instance level. Note: if you use this function within a static 
-		 * 					class use a string as caller like: “MyStaticClass”.
+		 * 					class use a string as caller like: "MyStaticClass".
 		 * @param object: 	The object to create the snapshot from. This object should extend a DisplayObject
 		 * 					(like a Sprite, MovieClip or UIComponent).
 		 * @param person: 	(Optional) The person of interest. You can use this label to easily work with 
@@ -249,10 +288,10 @@ package com.demonsters.debugger
 		 * MonsterDebugger.breakpoint(this, "myLabel");<br>
 		 * </code>
 		 * 
-		 * @param caller: 	The caller of the breakpoint. We suggest you always use the keyword “this”. 
+		 * @param caller: 	The caller of the breakpoint. We suggest you always use the keyword "this". 
 		 * 					The caller is displayed in the desktop application to easily identify your 
 		 * 					breakpoints on instance level. Note: if you use this function within a static 
-		 * 					class use a string as caller like: “MyStaticClass”.
+		 * 					class use a string as caller like: "MyStaticClass".
 		 * @param id:		(Optional) The identifier of the breakpoint, used as a label in the interface.
 		 */
 		public static function breakpoint(caller:*, id:String = "breakpoint"):void

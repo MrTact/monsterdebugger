@@ -73,15 +73,17 @@ package controllers.panels
 					_data.removeAll();
 					for each (var subitem:XML in data["xml"].node.node) {
 						var iconType:Class = null;
+						var edit:Boolean = false;
 						if (subitem.@access == MonsterDebuggerConstants.ACCESS_ACCESSOR || subitem.@access == MonsterDebuggerConstants.ACCESS_VARIABLE) {
 							if (subitem.@permission == MonsterDebuggerConstants.PERMISSION_READWRITE) {
 								var paramType:String = String(subitem.@type);
 								if (paramType == MonsterDebuggerConstants.TYPE_STRING || paramType == MonsterDebuggerConstants.TYPE_BOOLEAN || paramType == MonsterDebuggerConstants.TYPE_NUMBER || paramType == MonsterDebuggerConstants.TYPE_INT || paramType == MonsterDebuggerConstants.TYPE_UINT) {
 									iconType = iconWrench;
+									edit = true;
 								}
 							}
 						}
-						_data.addItem({name:String(subitem.@name), label:String(subitem.@label), target:String(subitem.@target), type:String(subitem.@type), value:subitem.@value, icon:iconType});
+						_data.addItem({name:String(subitem.@name), label:String(subitem.@label), target:String(subitem.@target), type:String(subitem.@type), value:subitem.@value, icon:iconType, edit:edit});
 					}
 					break;
 					

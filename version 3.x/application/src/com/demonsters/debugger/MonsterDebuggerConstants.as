@@ -42,7 +42,7 @@ package com.demonsters.debugger
 		public static const TYPE_BOOLEAN:String = "Boolean";
 		public static const TYPE_NUMBER:String = "Number";
 		public static const TYPE_OBJECT:String = "Object";
-		public static const TYPE_VECTOR:String = "Vector";
+		public static const TYPE_VECTOR:String = "Vector.";
 		public static const TYPE_STRING:String = "String";
 		public static const TYPE_INT:String = "int";
 		public static const TYPE_UINT:String = "uint";

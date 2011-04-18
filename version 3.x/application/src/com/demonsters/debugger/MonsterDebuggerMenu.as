@@ -1,6 +1,5 @@
 package com.demonsters.debugger
 {
-	import flash.ui.Keyboard;
 	import flash.desktop.NativeApplication;
 	import flash.display.NativeMenu;
 	import flash.display.NativeMenuItem;
@@ -114,7 +113,15 @@ package com.demonsters.debugger
 				_mainWindow.menu = createTopMenu();
 			}
 		}
-
+		
+		
+		/**
+		 * Get the main window
+		 */
+		public static function get mainWindow():NativeWindow {
+			return _mainWindow;
+		}
+		
 
 		/**
 		 * When the main window gain focus
