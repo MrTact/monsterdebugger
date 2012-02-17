@@ -15,7 +15,7 @@ package controllers.tabs
 	import controllers.panels.PropertiesController;
 	import controllers.panels.TraceController;
 	import events.PanelEvent;
-	import com.demonsters.debugger.MonsterDebuggerClient;
+	import com.demonsters.debugger.IMonsterDebuggerClient;
 	import com.demonsters.debugger.MonsterDebuggerConstants;
 	import com.demonsters.debugger.MonsterDebuggerData;
 	import com.demonsters.debugger.MonsterDebuggerMenu;
@@ -28,7 +28,7 @@ package controllers.tabs
 	{
 
 		// Linked client
-		private var _client:MonsterDebuggerClient;
+		private var _client:IMonsterDebuggerClient;
 
 
 		// The tab component
@@ -65,7 +65,7 @@ package controllers.tabs
 		/**
 		 * Create a new tab controller
 		 */
-		public function TabController(container:TabContainer, aClient:MonsterDebuggerClient)
+		public function TabController(container:TabContainer, aClient:IMonsterDebuggerClient)
 		{
 			_toggleLiveApplicationViewMenuItem = true;
 			_toggleBreakpointsViewMenuItem = true;
@@ -169,7 +169,7 @@ package controllers.tabs
 		/**
 		 * Link the client to this tab
 		 */
-		public function set client(value:MonsterDebuggerClient):void {
+		public function set client(value:IMonsterDebuggerClient):void {
 			_client = value;
 			if (_client != null) {
 				_client.onData = dataHandler;
@@ -196,7 +196,7 @@ package controllers.tabs
 		/**
 		 * Return the linked client
 		 */
-		public function get client():MonsterDebuggerClient {
+		public function get client():IMonsterDebuggerClient {
 			return _client;
 		}
 
@@ -251,7 +251,7 @@ package controllers.tabs
 		}
 
 
-		private function closedConnection(target:MonsterDebuggerClient):void
+		private function closedConnection(target:IMonsterDebuggerClient):void
 		{
 			_tab.disconnectMessageBox.visible = true;
 			_tab.disconnectMessageBox.includeInLayout = true;

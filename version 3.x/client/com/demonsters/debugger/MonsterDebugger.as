@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen, Joost Harts and Stijn van der Laan
  * @company 	De Monsters
  * @link 		http://www.MonsterDebugger.com
- * @version 	3.0
+ * @version 	3.02
  * 
  *
  * Special thanks to: 
@@ -56,7 +56,7 @@ package com.demonsters.debugger
 		
 		
 		// Version number
-		internal static const VERSION:Number = 3.01;
+		internal static const VERSION:Number = 3.02;
 		
 
 		/**
@@ -91,10 +91,9 @@ package com.demonsters.debugger
 		 * @param address:      (Optional) An IP address where the Monster Debugger will 
 		 * 						try to connect to. By default it will connect to you local IP address 
 		 * 						(127.0.0.1) but you can also supply another IP address like a remote
-		 * 						machine. 
-		 * @param onConnect:    Callback function when the Monster Debugger is connected to the desktop app.					
+		 * 						machine. 			
 		 */
-		public static function initialize(base:Object, address:String = "127.0.0.1", onConnect:Function = null):void
+		public static function initialize(base:Object, address:String = "127.0.0.1"):void
 		{		
 			if (!_initialized) {
 				_initialized = true;
@@ -104,7 +103,6 @@ package com.demonsters.debugger
 				MonsterDebuggerCore.initialize();
 				MonsterDebuggerConnection.initialize();
 				MonsterDebuggerConnection.address = address;
-				MonsterDebuggerConnection.onConnect = onConnect;
 				MonsterDebuggerConnection.connect();
 				
 				// Start the sampler
@@ -338,65 +336,6 @@ package com.demonsters.debugger
 		{
 			if (_initialized && _enabled) {
 				MonsterDebuggerCore.clear();
-			}
-		}
-
-
-		/**
-		 * @private
-		 * Check if a plugin is registerd (ALPHA).
-		 * @param id: The plugin id
-		 */
-		public static function hasPlugin(id:String):Boolean
-		{
-			if (_initialized) {
-				return MonsterDebuggerCore.hasPlugin(id);
-			}
-			return false;
-		}
-		
-		
-		/**
-		 * @private
-		 * Register a plugin (ALPHA).
-		 * @param pluginClass: The plugin class
-		 */
-		public static function registerPlugin(pluginClass:Class):void
-		{
-			if (_initialized) {
-				
-				// Create the new plugin and register it
-				var plugin:MonsterDebuggerPlugin = new pluginClass();
-			
-				// Register plugin
-				MonsterDebuggerCore.registerPlugin(plugin.id, plugin);
-			}
-		}
-		
-		
-		/**
-		 * @private
-		 * Unregister a plugin (ALPHA).
-		 * @param id: The plugin id
-		 */
-		public static function unregisterPlugin(id:String):void
-		{
-			if (_initialized) {
-				MonsterDebuggerCore.unregisterPlugin(id);
-			}
-		}
-		
-		
-		/**
-		 * @private
-		 * Send data to the connection.
-		 * @param id: The id of the plugin
-		 * @param data: The data to send
-		 */
-		internal static function send(id:String, data:Object):void
-		{
-			if (_initialized && _enabled) {
-				MonsterDebuggerConnection.send(id, data, false);
 			}
 		}
 		

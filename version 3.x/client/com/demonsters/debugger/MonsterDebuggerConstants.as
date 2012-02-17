@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen, Joost Harts and Stijn van der Laan
  * @company 	De Monsters
  * @link 		http://www.MonsterDebugger.com
- * @version 	3.0
+ * @version 	3.02
  * 
  *
  * Special thanks to: 
@@ -77,6 +77,7 @@ package com.demonsters.debugger
 		
 		// Types
 		internal static const TYPE_VOID					:String = "void";
+		internal static const TYPE_NULL					:String = "null";
 		internal static const TYPE_ARRAY				:String = "Array";
 		internal static const TYPE_BOOLEAN				:String = "Boolean";
 		internal static const TYPE_NUMBER				:String = "Number";

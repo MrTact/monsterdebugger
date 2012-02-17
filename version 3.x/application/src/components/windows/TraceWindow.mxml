@@ -6,6 +6,7 @@
 	<fx:Script>
 		<![CDATA[
 
+			import com.demonsters.debugger.MonsterDebuggerConstants;
 			import com.demonsters.debugger.MonsterDebuggerMenu;
 			import com.demonsters.debugger.MonsterDebuggerUtils;
 			import mx.collections.XMLListCollection;
@@ -104,15 +105,14 @@
 
 			private function onInitialize():void
 			{
-				this.visible = false;
+				visible = false;
 			}
 
 
 			private function onCreationComplete():void
 			{
-				MonsterDebuggerUtils.checkWindow(nativeWindow);
+				MonsterDebuggerUtils.loadWindowOptions(nativeWindow, "com.demonsters.debugger.TraceWindow");
 				visible = true;
-				activate();
 				
 				// Set on top
 				if (MonsterDebuggerMenu.mainWindow.alwaysInFront) {
@@ -131,12 +131,14 @@
 				textArea.visible = false;
 				tree.visible = false;
 
-				// Check if we should use a tree object or a textfield
-				if (_xml.node.children().length() == 0) {
-					
-					// Set the textfield
-					textArea.text = MonsterDebuggerUtils.htmlUnescape(_xml.node.@label);
-					textArea.visible = true;
+				var t:String = _xml.node.@type;
+				var l:int = _xml..node.length();
+				if (l == 2 && t == MonsterDebuggerConstants.TYPE_NULL || t == MonsterDebuggerConstants.TYPE_STRING || t == MonsterDebuggerConstants.TYPE_BOOLEAN || t == MonsterDebuggerConstants.TYPE_NUMBER || t == MonsterDebuggerConstants.TYPE_INT || t == MonsterDebuggerConstants.TYPE_UINT)
+				{
+				 	// Set the textfield
+				 	textArea.text = MonsterDebuggerUtils.htmlUnescape(_xml..node[1].@value);
+				 	textArea.visible = true;
+				 	
 				} else {
 					
 					// Set the tree item
@@ -145,7 +147,17 @@
 					tree.openItems = _xml.children();
 					tree.visible = true;
 				}
+				
+				nativeWindow.addEventListener(Event.CLOSING, saveWindowOptions, false, 0, true);
 			}
+			
+			
+			private function saveWindowOptions(e:Event):void
+			{
+				MonsterDebuggerUtils.saveWindowOptions(nativeWindow, "com.demonsters.debugger.TraceWindow");
+			}
+			
+			
 		]]>
 	</fx:Script>
 	<fx:Style>

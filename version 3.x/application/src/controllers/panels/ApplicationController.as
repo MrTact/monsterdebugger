@@ -122,10 +122,8 @@ package controllers.panels
 			var xml:XMLList = new XMLList();
 
 			// Variables for the loops
-			var add:Boolean = true;
 			var temp:*;
 			var i:int;
-			var n:int;
 			
 			// Loop through the nodes
 			for (i = 0; i < children.length(); i++) {

@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen, Joost Harts and Stijn van der Laan
  * @company 	De Monsters
  * @link 		http://www.MonsterDebugger.com
- * @version 	3.0
+ * @version 	3.02
  * 
  *
  * Special thanks to: 
@@ -75,10 +75,6 @@ package com.demonsters.debugger
 		// Data buffer
 		private var _queue:Array = [];
 
-		
-		// Connect handler
-		private var _onConnect:Function;
-		
 		
 		public function MonsterDebuggerConnectionMobile()
 		{
@@ -147,9 +143,6 @@ package com.demonsters.debugger
 						_connected = true;
 						_connectedNeighbor = event.info.neighbor;
 						_process = false;
-						if (_onConnect != null) {
-							_onConnect();
-						}
 					}
 				break;
 					
@@ -179,14 +172,6 @@ package com.demonsters.debugger
 		 */
 		public function set address(value:String):void {
 			// No need to set the address
-		}
-		
-		
-		/**
-		 * @param value: The callback function.
-		 */
-		public function set onConnect(value:Function):void {
-			_onConnect = value;
 		}
 		
 		
@@ -283,6 +268,8 @@ package com.demonsters.debugger
 			obj["data"] = data.data;
 			
 			// Write it to the group
+			// XXX: Broadcast ipv send to neighbors
+			// XXX: Subnet ipv 255.255.0.1
 			_group.sendToAllNeighbors(obj);
 			
 			// Proceed queue

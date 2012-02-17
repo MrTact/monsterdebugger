@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen, Joost Harts and Stijn van der Laan
  * @company 	De Monsters
  * @link 		http://www.MonsterDebugger.com
- * @version 	3.0
+ * @version 	3.02
  * 
  *
  * Special thanks to: 
@@ -119,11 +119,16 @@ package com.demonsters.debugger
 			}
 			
 			// Create the bitmap
-			bitmapData = new BitmapData(bounds.width, bounds.height, false, 0xFFFFFF);
-			m = new Matrix();
-			m.tx = -bounds.x;
-			m.ty = -bounds.y;
-			bitmapData.draw(object, m, null, null, null, false);
+			try {
+				bitmapData = new BitmapData(bounds.width, bounds.height, false, 0xFFFFFF);
+				m = new Matrix();
+				m.tx = -bounds.x;
+				m.ty = -bounds.y;
+				bitmapData.draw(object, m, null, null, null, false);
+			} catch (e2:Error) {
+				bitmapData = null;
+				// TODO: Crossdomain warning
+			}
 			
 			// Restore
 			try {
@@ -132,8 +137,13 @@ package com.demonsters.debugger
 				object.rotation = rotation;
 				object.scaleX = scaleX;
 				object.scaleY = scaleY;
-			} catch (e2:Error) {
+			} catch (e3:Error) {
 				//
+			}
+			
+			// Return 
+			if (bitmapData == null) {
+				return null;
 			}
 			
 			// Check if we should scale the result
@@ -156,11 +166,17 @@ package com.demonsters.debugger
 				
 				// Return scaled data
 				var s:Number = scaled.width / bounds.width;
-				var b:BitmapData = new BitmapData(scaled.width, scaled.height, false, 0x000000);
-				m = new Matrix();
-				m.scale(s, s);
-				b.draw(bitmapData, m, null, null, null, true);
-				return b;
+				try {
+					var b:BitmapData = new BitmapData(scaled.width, scaled.height, false, 0x000000);
+					m = new Matrix();
+					m.scale(s, s);
+					b.draw(bitmapData, m, null, null, null, true);
+					bitmapData.dispose();
+					bitmapData = b;
+				} catch (e4:Error) {
+					bitmapData.dispose();
+					bitmapData = null;
+				}
 			}
 			
 			return bitmapData;
@@ -369,7 +385,7 @@ package com.demonsters.debugger
 			return object;
 		}
 		
-		
+
 		/**
 		 * Parse an object.
 		 * @param object: The object to parse
@@ -383,13 +399,13 @@ package com.demonsters.debugger
 			// Variables needed in the loops
 			var rootXML:XML = new XML("<root/>");
 			var childXML:XML = new XML("<node/>");
-			var listXML:XML;
 			var description:XML = new XML();
 			var type:String = "";
 			var base:String = "";
 			var isDynamic:Boolean = false;
-			var i:int;
-
+			var label:String = null;		
+			var icon:String = MonsterDebuggerConstants.ICON_ROOT;
+			
 			// Check if the max  depth is reached
 			if (maxDepth != -1 && currentDepth > maxDepth) {
 				return rootXML;
@@ -398,14 +414,9 @@ package com.demonsters.debugger
 			// Null object
 			if (object == null)
 			{
-				// Add a warning
-				listXML = new XML("<node/>");
-				listXML.@icon = MonsterDebuggerConstants.ICON_WARNING;
-				listXML.@label = "Null object";
-				listXML.@name = "Null object";
-				listXML.@type = MonsterDebuggerConstants.TYPE_WARNING;
-				childXML.appendChild(listXML);
 				type = "null";
+				label = "null";
+				icon = MonsterDebuggerConstants.ICON_WARNING;
 			}
 			else
 			{
@@ -414,46 +425,32 @@ package com.demonsters.debugger
 				type = parseType(description.@name);
 				base = parseType(description.@base);
 				isDynamic = description.@isDynamic;
-				
+
 				// Check for class type
 				if (object is Class)
 				{
 					// The object is a class value, this will show the static properties
+					label = "Class = " + type;
+					type = "Class";
 					childXML.appendChild(parseClass(object, target, description, currentDepth, maxDepth, includeDisplayObjects).children());
 				}
 				else if (type == MonsterDebuggerConstants.TYPE_XML)
 				{
-					// Parse the XML
-					childXML.appendChild(parseXML(object, target + "." + "children()", currentDepth, maxDepth).children());
+					childXML.appendChild(parseXML(object, target + ".children()", currentDepth, maxDepth).children());
 				}
 				else if (type == MonsterDebuggerConstants.TYPE_XMLLIST)
 				{
-					// Parse the XMLList
-					listXML = new XML("<node/>");
-					listXML.@icon = MonsterDebuggerConstants.ICON_VARIABLE;
-					listXML.@type = MonsterDebuggerConstants.TYPE_UINT;
-					listXML.@access = MonsterDebuggerConstants.ACCESS_VARIABLE;
-					listXML.@permission = MonsterDebuggerConstants.PERMISSION_READONLY;
-					listXML.@target = target + "." + "length";
-					listXML.@label = "length" + " (" + MonsterDebuggerConstants.TYPE_UINT + ") = " + object.length();
-					listXML.@name = "length";
-					listXML.@value = object.length();
-					
-					// Loop through the xml nodes
-					for (i = 0; i < object.length(); i++) {				
-						listXML.appendChild(parseXML(object[i], target + "." + String(i) + ".children()", currentDepth, maxDepth).children());
-					}
-					
-					// Add to parent
-					childXML.appendChild(listXML);
+					label = type + " [" + String(object.length()) + "]";
+					childXML.appendChild(parseXMLList(object, target, currentDepth, maxDepth).children());
+				}
+				else if (type == MonsterDebuggerConstants.TYPE_ARRAY || type.indexOf(MonsterDebuggerConstants.TYPE_VECTOR) == 0)
+				{
+					label = type + " [" + String(object["length"]) + "]";
+					childXML.appendChild(parseArray(object, target, currentDepth, maxDepth).children());
 				}
 				else if (type == MonsterDebuggerConstants.TYPE_STRING || type == MonsterDebuggerConstants.TYPE_BOOLEAN || type == MonsterDebuggerConstants.TYPE_NUMBER || type == MonsterDebuggerConstants.TYPE_INT || type == MonsterDebuggerConstants.TYPE_UINT)
 				{
 					childXML.appendChild(parseBasics(object, target, type).children());
-				}
-				else if (type == MonsterDebuggerConstants.TYPE_ARRAY || type.indexOf(MonsterDebuggerConstants.TYPE_VECTOR) == 0)
-				{
-					childXML.appendChild(parseArray(object, target, currentDepth, maxDepth).children());
 				}
 				else if (type == MonsterDebuggerConstants.TYPE_OBJECT)
 				{
@@ -465,15 +462,19 @@ package com.demonsters.debugger
 				}
 			}
 			
-			// Add a root element if needed
 			if (currentDepth == 1)
 			{
 				// Save the extra info
 				var topXML:XML = new XML("<node/>");
-				topXML.@icon = MonsterDebuggerConstants.ICON_ROOT;
-				topXML.@label = "(" + type + ")";
+				topXML.@icon = icon;
+				topXML.@label = type;
 				topXML.@type = type;
 				topXML.@target = target;
+				
+				// Check for fixed label
+				if (label != null) {
+					topXML.@label = label;
+				}
 				
 				// First add the top then the child nodes
 				topXML.appendChild(childXML.children());
@@ -495,49 +496,21 @@ package com.demonsters.debugger
 		 * @param currentDepth: The current  depth
 		 * @param maxDepth: The maximum  depth
 		 */
-		private static function parseBasics(object:*, target:String, type:String, currentDepth:int = 1, maxDepth:int = 5):XML
-		{
+		private static function parseBasics(object:*, target:String, type:String):XML
+		{			
 			// Return type and properties
 			var rootXML:XML = new XML("<root/>");
 			var nodeXML:XML = new XML("<node/>");
-			var isXML:Boolean = false;
-			var isXMLString:XML = new XML();
-			
-			// Check if the string is a XML string
-			if (type == MonsterDebuggerConstants.TYPE_STRING) {
-				try {
-					isXMLString = new XML(object);
-					isXML = (!isXMLString.hasSimpleContent() && isXMLString.children().length() > 0);
-				} catch(error:TypeError) {}
-			}
 
-			if (!isXML)
-			{
-				// Parse the basic type
-				nodeXML.@icon 			= MonsterDebuggerConstants.ICON_VARIABLE;
-				nodeXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
-				nodeXML.@permission		= MonsterDebuggerConstants.PERMISSION_READWRITE;
-				nodeXML.@label 			= "(" + type + ") = " + printValue(object, type); 
-				nodeXML.@name 			= "";
-				nodeXML.@type 			= type; 
-				nodeXML.@value 			= printValue(object, type); 
-				nodeXML.@target 		= target;
-			}
-			else
-			{
-				// Parse the XML
-				nodeXML.@icon 			= MonsterDebuggerConstants.ICON_VARIABLE;
-				nodeXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
-				nodeXML.@permission		= MonsterDebuggerConstants.PERMISSION_READWRITE;
-				nodeXML.@label 			= "(" + MonsterDebuggerConstants.TYPE_XML + ")"; 
-				nodeXML.@name 			= "";
-				nodeXML.@type 			= MonsterDebuggerConstants.TYPE_XML; 
-				nodeXML.@value 			= ""; 
-				nodeXML.@target 		= target;
-				
-				// Parse the XMLList
-				nodeXML.appendChild(parseXML(isXMLString, target + "." + "children()", currentDepth, maxDepth).children());
-			}
+			// Parse the basic type
+			nodeXML.@icon 			= MonsterDebuggerConstants.ICON_VARIABLE;
+			nodeXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
+			nodeXML.@permission		= MonsterDebuggerConstants.PERMISSION_READWRITE;
+			nodeXML.@label 			= type + " = " + printValue(object, type, true); 
+			nodeXML.@name 			= "";
+			nodeXML.@type 			= type; 
+			nodeXML.@value 			= printValue(object, type); 
+			nodeXML.@target 		= target;
 			
 			// Add to parent
 			rootXML.appendChild(nodeXML);
@@ -558,25 +531,11 @@ package com.demonsters.debugger
 		{
 			// Return type and properties
 			var rootXML:XML = new XML("<root/>");
-			var nodeXML:XML;
 			var childXML:XML;
 			var childType:String = "";
 			var childTarget:String = "";
-			var isXML:Boolean = false;
-			var isXMLString:XML = new XML();
 			var i:int = 0;
 
-			// Create the head node
-			nodeXML = new XML("<node/>");
-			nodeXML.@icon = MonsterDebuggerConstants.ICON_VARIABLE;
-			nodeXML.@label = "length" + " (" + MonsterDebuggerConstants.TYPE_UINT + ") = " + object["length"];
-			nodeXML.@name = "length";
-			nodeXML.@type = MonsterDebuggerConstants.TYPE_UINT;
-			nodeXML.@value = object["length"];
-			nodeXML.@target = target + "." + "length";
-			nodeXML.@access = MonsterDebuggerConstants.ACCESS_VARIABLE;
-			nodeXML.@permission = MonsterDebuggerConstants.PERMISSION_READONLY;
-			
 			// Get and sort the properties
 			var keys:Array = [];
 			var isNumeric:Boolean = true;
@@ -602,51 +561,17 @@ package com.demonsters.debugger
 				// Check if we can create a single string or a new node
 				if (childType == MonsterDebuggerConstants.TYPE_STRING || childType == MonsterDebuggerConstants.TYPE_BOOLEAN || childType == MonsterDebuggerConstants.TYPE_NUMBER || childType == MonsterDebuggerConstants.TYPE_INT || childType == MonsterDebuggerConstants.TYPE_UINT || childType == MonsterDebuggerConstants.TYPE_FUNCTION)
 				{
-					isXML = false;
-					isXMLString = new XML();
-					
-					// Check if the string is a XML string
-					if (childType == MonsterDebuggerConstants.TYPE_STRING) {
-						try {
-							isXMLString = new XML(object[keys[i]]);
-							if (!isXMLString.hasSimpleContent() && isXMLString.children().length() > 0) isXML = true;
-						} catch (error:TypeError) {}
-					}
-					
-					
-					if (!isXML)
-					{
-						// Parse the basic type
-						childXML = new XML("<node/>");
-						childXML.@icon 			= MonsterDebuggerConstants.ICON_VARIABLE;
-						childXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
-						childXML.@permission 	= MonsterDebuggerConstants.PERMISSION_READWRITE;
-						childXML.@label 		= "[" + keys[i] + "] (" + childType + ") = " + printValue(object[keys[i]], childType); 
-						childXML.@name 			= "[" + keys[i] + "]";
-						childXML.@type 			= childType; 
-						childXML.@value 		= printValue(object[keys[i]], childType); 
-						childXML.@target 		= childTarget;
-						nodeXML.appendChild(childXML);
-					}
-					else
-					{
-						// Parse the XML string
-						childXML = new XML("<node/>");
-						childXML.@icon 			= MonsterDebuggerConstants.ICON_VARIABLE;
-						childXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
-						childXML.@permission 	= MonsterDebuggerConstants.PERMISSION_READWRITE;
-						childXML.@label 		= "[" + keys[i] + "] (" + childType + ")"; 
-						childXML.@name 			= "[" + keys[i] + "]";
-						childXML.@type 			= childType; 
-						childXML.@value 		= "" ;
-						childXML.@target 		= childTarget;
-						
-						// Try to parse the object
-						childXML.appendChild(parseXML(object[keys[i]], childTarget, currentDepth + 1, maxDepth).children());
-						
-						// Add to parent
-						nodeXML.appendChild(childXML);
-					}
+					// Parse the basic type
+					childXML = new XML("<node/>");
+					childXML.@icon 			= MonsterDebuggerConstants.ICON_VARIABLE;
+					childXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
+					childXML.@permission 	= MonsterDebuggerConstants.PERMISSION_READWRITE;
+					childXML.@label 		= "[" + keys[i] + "] (" + childType + ") = " + printValue(object[keys[i]], childType, true); 
+					childXML.@name 			= "[" + keys[i] + "]";
+					childXML.@type 			= childType; 
+					childXML.@value 		= printValue(object[keys[i]], childType); 
+					childXML.@target 		= childTarget;
+					rootXML.appendChild(childXML);
 				}
 				else
 				{
@@ -660,17 +585,20 @@ package com.demonsters.debugger
 					childXML.@type 			= childType; 
 					childXML.@value 		= "" ;
 					childXML.@target 		= childTarget;
-							
+					
+					// Check for null object
+					if (object[keys[i]] == null) {
+						childXML.@icon = MonsterDebuggerConstants.ICON_WARNING;
+						childXML.@label += " = null";
+					}
+					
 					// Try to parse the object
 					childXML.appendChild(parse(object[keys[i]], childTarget, currentDepth + 1, maxDepth, includeDisplayObjects).children());
 					
 					// Add to parent
-					nodeXML.appendChild(childXML);
+					rootXML.appendChild(childXML);
 				}
 			}
-			
-			// Add to parent
-			rootXML.appendChild(nodeXML);
 			
 			// Return
 			return rootXML;
@@ -720,7 +648,7 @@ package com.demonsters.debugger
 				nodeXML.@type 			= MonsterDebuggerConstants.TYPE_XMLVALUE;
 				nodeXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
 				nodeXML.@permission 	= MonsterDebuggerConstants.PERMISSION_READWRITE;
-				nodeXML.@label 			= "(" + MonsterDebuggerConstants.TYPE_XMLVALUE + ") = " + printValue(xml, MonsterDebuggerConstants.TYPE_XMLVALUE);
+				nodeXML.@label 			= "(" + MonsterDebuggerConstants.TYPE_XMLVALUE + ") = " + printValue(xml, MonsterDebuggerConstants.TYPE_XMLVALUE, true);
 				nodeXML.@name 			= "";
 				nodeXML.@value 			= printValue(xml, MonsterDebuggerConstants.TYPE_XMLVALUE);
 				nodeXML.@target 		= target;
@@ -817,11 +745,38 @@ package com.demonsters.debugger
 		
 		
 		/**
+		 * Parse an XML list.
+		 * @param xml: The xml to parse
+		 * @param target: A point seperated path to the object
+		 * @param currentDepth: The current  depth
+		 * @param maxDepth: The maximum  depth
+		 */
+		public static function parseXMLList(xml:*, target:String = "", currentDepth:int = 1, maxDepth:int = -1):XML
+		{
+			// Create a return string
+			var rootXML:XML = new XML("<root/>");
+
+			// Check if the max depth is reached
+			if (maxDepth != -1 && currentDepth > maxDepth) {
+				return rootXML;
+			}
+	
+			// Loop through the xml nodes
+			for (var i:int = 0; i < xml.length(); i++) {				
+				rootXML.appendChild(parseXML(xml[i], target + "." + String(i) + ".children()", currentDepth, maxDepth).children());
+			}
+			
+			return rootXML;
+		}
+		
+		
+		/**
 		 * Parse an Object.
 		 * @param object: The object to parse
 		 * @param target: A point seperated path to the object
 		 * @param currentDepth: The current  depth
 		 * @param maxDepth: The maximum  depth
+		 * @param includeDisplayObjects: Include display objects
 		 */
 		private static function parseObject(object:*, target:String, currentDepth:int = 1, maxDepth:int = 5, includeDisplayObjects:Boolean = true):XML
 		{
@@ -831,8 +786,6 @@ package com.demonsters.debugger
 			var childXML:XML;
 			var childType:String = "";
 			var childTarget:String = "";
-			var isXML:Boolean = false;
-			var isXMLString:XML = new XML();
 			var i:int = 0;
 
 			// Get and sort the properties
@@ -859,50 +812,17 @@ package com.demonsters.debugger
 				// Check if we can create a single string or a new node
 				if (childType == MonsterDebuggerConstants.TYPE_STRING || childType == MonsterDebuggerConstants.TYPE_BOOLEAN || childType == MonsterDebuggerConstants.TYPE_NUMBER || childType == MonsterDebuggerConstants.TYPE_INT || childType == MonsterDebuggerConstants.TYPE_UINT || childType == MonsterDebuggerConstants.TYPE_FUNCTION)
 				{
-					isXML = false;
-					isXMLString = new XML();
-					
-					// Check if the string is a XML string
-					if (childType == MonsterDebuggerConstants.TYPE_STRING) {
-						try {
-							isXMLString = new XML(object[properties[i]]);
-							if (!isXMLString.hasSimpleContent() && isXMLString.children().length() > 0) isXML = true;
-						} catch (error:TypeError) {}
-					}
-	
-					if (!isXML)
-					{
-						// Parse the basic type
-						childXML = new XML("<node/>");
-						childXML.@icon 			= MonsterDebuggerConstants.ICON_VARIABLE;
-						childXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
-						childXML.@permission 	= MonsterDebuggerConstants.PERMISSION_READWRITE;
-						childXML.@label 		= properties[i] + " (" + childType + ") = " + printValue(object[properties[i]], childType); 
-						childXML.@name 			= properties[i];
-						childXML.@type 			= childType; 
-						childXML.@value 		= printValue(object[properties[i]], childType); 
-						childXML.@target 		= childTarget;
-						nodeXML.appendChild(childXML);
-					}
-					else
-					{
-						// Parse the XML string
-						childXML = new XML("<node/>");
-						childXML.@icon 			= MonsterDebuggerConstants.ICON_VARIABLE;
-						childXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
-						childXML.@permission 	= MonsterDebuggerConstants.PERMISSION_READWRITE;
-						childXML.@label 		= properties[i] + " (" + childType + ")"; 
-						childXML.@name 			= properties[i];
-						childXML.@type 			= childType; 
-						childXML.@value 		= "" ;
-						childXML.@target 		= childTarget;
-						
-						// Try to parse the object
-						childXML.appendChild(parseXML(object[properties[i]], childTarget, currentDepth + 1, maxDepth).children());
-						
-						// Add to parent
-						nodeXML.appendChild(childXML);
-					}
+					// Parse the basic type
+					childXML = new XML("<node/>");
+					childXML.@icon 			= MonsterDebuggerConstants.ICON_VARIABLE;
+					childXML.@access 		= MonsterDebuggerConstants.ACCESS_VARIABLE;
+					childXML.@permission 	= MonsterDebuggerConstants.PERMISSION_READWRITE;
+					childXML.@label 		= properties[i] + " (" + childType + ") = " + printValue(object[properties[i]], childType, true); 
+					childXML.@name 			= properties[i];
+					childXML.@type 			= childType; 
+					childXML.@value 		= printValue(object[properties[i]], childType); 
+					childXML.@target 		= childTarget;
+					nodeXML.appendChild(childXML);
 				}
 				else
 				{
@@ -916,7 +836,13 @@ package com.demonsters.debugger
 					childXML.@type 			= childType; 
 					childXML.@value 		= "" ;
 					childXML.@target 		= childTarget;
-							
+					
+					// Check for null object
+					if (object[properties[i]] == null) {
+						childXML.@icon = MonsterDebuggerConstants.ICON_WARNING;
+						childXML.@label += " = null";
+					}
+					
 					// Try to parse the object
 					childXML.appendChild(parse(object[properties[i]], childTarget, currentDepth + 1, maxDepth, includeDisplayObjects).children());
 					
@@ -966,12 +892,11 @@ package com.demonsters.debugger
 			var itemType:String;
 			var itemName:String;
 			var itemTarget:String;
-			var isXML:Boolean = false;
-			var isXMLString:XML;
 			var i:int;
-		
+			
 			// Save dynamic properties
 			if (isDynamic) {
+				
 				for (var prop:* in object) {
 					key = String(prop);
 					if (!keys.hasOwnProperty(key)) {
@@ -993,14 +918,17 @@ package com.demonsters.debugger
 					}
 				}
 			}
-			
+
 			// Save the variables
 			for (i = 0; i < variablesLength; i++) {
 				key = variables[i].@name;
 				if (!keys.hasOwnProperty(key)) {
+					
+
 					keys[key] = key;
 					itemName = key;
 					itemType = parseType(variables[i].@type);
+					
 					itemTarget = target + "." + key;
 					itemAccess = MonsterDebuggerConstants.ACCESS_VARIABLE;
 					itemPermission = MonsterDebuggerConstants.PERMISSION_READWRITE;
@@ -1124,6 +1052,11 @@ package com.demonsters.debugger
 				itemPermission = itemsArray[i].permission;
 				itemAccess = itemsArray[i].access;
 				itemIcon = itemsArray[i].icon;
+
+				// Don't include write only items (gives an error)
+				if (itemPermission == MonsterDebuggerConstants.PERMISSION_WRITEONLY) {
+					continue;
+				}
 				
 				// Get the child or property
 				try {
@@ -1135,77 +1068,44 @@ package com.demonsters.debugger
 				} catch (e2:Error) {
 					item = null;
 				}
-				
-				// Don't show write only vars
-				if (item != null && itemPermission != MonsterDebuggerConstants.PERMISSION_WRITEONLY)
+
+				// Check if we can create a single string or a new node
+				if (itemType == MonsterDebuggerConstants.TYPE_STRING || itemType == MonsterDebuggerConstants.TYPE_BOOLEAN || itemType == MonsterDebuggerConstants.TYPE_NUMBER || itemType == MonsterDebuggerConstants.TYPE_INT || itemType == MonsterDebuggerConstants.TYPE_UINT || itemType == MonsterDebuggerConstants.TYPE_FUNCTION)
 				{
-					// Check if we can create a single string or a new node
-					if (itemType == MonsterDebuggerConstants.TYPE_STRING || itemType == MonsterDebuggerConstants.TYPE_BOOLEAN || itemType == MonsterDebuggerConstants.TYPE_NUMBER || itemType == MonsterDebuggerConstants.TYPE_INT || itemType == MonsterDebuggerConstants.TYPE_UINT || itemType == MonsterDebuggerConstants.TYPE_FUNCTION)
-					{
-						isXML = false;
-						isXMLString = new XML();
-						
-						// Check if the string is a XML string
-						if (itemType == MonsterDebuggerConstants.TYPE_STRING) {
-							try {
-								isXMLString = new XML(item);
-								isXML = (!isXMLString.hasSimpleContent() && isXMLString.children().length() > 0);
-							} catch(error:TypeError) {}
-						}
-						
-						if (!isXML)
-						{
-							// Parse the text
-							nodeXML = new XML("<node/>");
-							nodeXML.@icon 			= itemIcon;
-							nodeXML.@label 			= itemName + " (" + itemType + ") = " + printValue(item, itemType); 
-							nodeXML.@name 			= itemName;
-							nodeXML.@type 			= itemType; 
-							nodeXML.@value 			= printValue(item, itemType); 
-							nodeXML.@target 		= itemTarget;
-							nodeXML.@access 		= itemAccess;
-							nodeXML.@permission 	= itemPermission;
-							rootXML.appendChild(nodeXML);
-						}
-						else
-						{
-							// Parse the XML
-							nodeXML = new XML("<node/>");
-							nodeXML.@icon 			= itemIcon;
-							nodeXML.@label 			= itemName + " (" + itemType + ")"; 
-							nodeXML.@name 			= itemName;
-							nodeXML.@type 			= itemType; 
-							nodeXML.@value 			= "";
-							nodeXML.@target 		= itemTarget;
-							nodeXML.@access 		= itemAccess;
-							nodeXML.@permission 	= itemPermission;
-							
-							// Parse the XMLList
-							nodeXML.appendChild(parseXML(isXMLString, itemTarget + "." + "children()", currentDepth, maxDepth).children());
-							
-							// Add to parent
-							rootXML.appendChild(nodeXML);
-						}
-					}
-					else
-					{
-						nodeXML = new XML("<node/>");
-						nodeXML.@icon			= itemIcon;
-						nodeXML.@label 			= itemName + " (" + itemType + ")"; 
-						nodeXML.@name 			= itemName;
-						nodeXML.@type 			= itemType; 
-						nodeXML.@target 		= itemTarget;
-						nodeXML.@access 		= itemAccess;
-						nodeXML.@permission 	= itemPermission;
-						
-						// Parse subchild
-						if (item != null && itemType != MonsterDebuggerConstants.TYPE_BYTEARRAY) {
-							nodeXML.appendChild(parse(item, itemTarget, currentDepth + 1, maxDepth, includeDisplayObjects).children());
-						}
+					// Parse the text
+					nodeXML = new XML("<node/>");
+					nodeXML.@icon 			= itemIcon;
+					nodeXML.@label 			= itemName + " (" + itemType + ") = " + printValue(item, itemType, true); 
+					nodeXML.@name 			= itemName;
+					nodeXML.@type 			= itemType; 
+					nodeXML.@value 			= printValue(item, itemType); 
+					nodeXML.@target 		= itemTarget;
+					nodeXML.@access 		= itemAccess;
+					nodeXML.@permission 	= itemPermission;
+					rootXML.appendChild(nodeXML);
+				}
+				else
+				{
+					nodeXML = new XML("<node/>");
+					nodeXML.@icon			= itemIcon;
+					nodeXML.@label 			= itemName + " (" + itemType + ")"; 
+					nodeXML.@name 			= itemName;
+					nodeXML.@type 			= itemType; 
+					nodeXML.@target 		= itemTarget;
+					nodeXML.@access 		= itemAccess;
+					nodeXML.@permission 	= itemPermission;
 					
-						// Add to parent
-						rootXML.appendChild(nodeXML);
+					// Check for null object
+					if (item == null) {
+						nodeXML.@icon = MonsterDebuggerConstants.ICON_WARNING;
+						nodeXML.@label += " = null";
 					}
+					
+					// Parse subchild
+					nodeXML.appendChild(parse(item, itemTarget, currentDepth + 1, maxDepth, includeDisplayObjects).children());
+				
+					// Add to parent
+					rootXML.appendChild(nodeXML);
 				}
 			}
 
@@ -1345,7 +1245,7 @@ package com.demonsters.debugger
 			return rootXML;
 		}
 		
-		
+				
 		/**
 		 * Converts package names to type.
 		 * Example: "com.demonsters.debugger::MonsterDebugger" becomes "MonsterDebugger"
@@ -1391,8 +1291,9 @@ package com.demonsters.debugger
 		 * Print an object value.
 		 * @param value: The value to print
 		 * @param type: The object type
+		 * @param limit: Limit the output length to 140 chars
 		 */
-		public static function printValue(value:*, type:String):String
+		public static function printValue(value:*, type:String, limit:Boolean = false):String
 		{
 			// We dont want to send the complete byte array
 			// Only display the number of bytes
@@ -1406,7 +1307,11 @@ package com.demonsters.debugger
 			}
 			
 			// Return the string value
-			return String(value);
+			var v:String = String(value);
+			if (limit && v.length > 140) {
+				v = v.substr(0, 140) + "...";
+			}
+			return v;
 		}
 		
 		

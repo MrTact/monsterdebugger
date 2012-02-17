@@ -15,8 +15,9 @@
 	</fx:Style>
 	<fx:Script>
 		<![CDATA[
+		import components.NumericalStepper;
 
-			import events.PropertyEvent;
+		import events.PropertyEvent;
 			import skins.DropdownMenu;
 			import skins.TextAreaSkinDataGrid;
 			import spark.components.DropDownList;
@@ -25,15 +26,13 @@
 			import com.demonsters.debugger.MonsterDebuggerConstants;
 			import mx.collections.ArrayCollection;
 			import mx.controls.Label;
-			import mx.controls.NumericStepper;
-
 
 			// Components
 			private var comboBox:DropDownList;
 			private var inputField:TextArea;
-			private var numNumericStepper:NumericStepper;
-			private var intNumericStepper:NumericStepper;
-			private var uintNumericStepper:NumericStepper;
+			private var numNumericStepper:NumericalStepper;
+			private var intNumericStepper:NumericalStepper;
+			private var uintNumericStepper:NumericalStepper;
 
 
 			// The new valuie
@@ -90,13 +89,13 @@
 						break;
 					case MonsterDebuggerConstants.TYPE_NUMBER:
 						precizeStepping = true;
-						numNumericStepper = new NumericStepper();
+						numNumericStepper = new NumericalStepper();
 						numNumericStepper.minimum = int.MIN_VALUE;
 						numNumericStepper.maximum = int.MAX_VALUE;
 						numNumericStepper.height = 23;
 						numNumericStepper.left = 0;
 						numNumericStepper.right = -2;
-						numNumericStepper.stepSize = 0.1;
+						numNumericStepper.stepSize = 1;
 						numNumericStepper.value = data["value"];
 						numNumericStepper.addEventListener(Event.CHANGE, onNumberChange, false, 0, true);
 						numNumericStepper.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown, false, 0, true);
@@ -108,7 +107,7 @@
 						break;
 					case MonsterDebuggerConstants.TYPE_INT:
 						precizeStepping = false;
-						intNumericStepper = new NumericStepper();
+						intNumericStepper = new NumericalStepper();
 						intNumericStepper.minimum = int.MIN_VALUE;
 						intNumericStepper.maximum = int.MAX_VALUE;
 						intNumericStepper.height = 23;
@@ -126,7 +125,7 @@
 						break;
 					case MonsterDebuggerConstants.TYPE_UINT:
 						precizeStepping = false;
-						uintNumericStepper = new NumericStepper();
+						uintNumericStepper = new NumericalStepper();
 						uintNumericStepper.minimum = uint.MIN_VALUE;
 						uintNumericStepper.maximum = uint.MAX_VALUE;
 						uintNumericStepper.height = 23;
@@ -150,24 +149,20 @@
 			{
 				if (e.ctrlKey) {
 					e.preventDefault();
-					NumericStepper(e.currentTarget).stepSize = 1;
+					if(precizeStepping) {
+						NumericalStepper(e.currentTarget).stepSize = 0.1;
+					}
 				} else if (e.shiftKey) {
 					e.preventDefault();
-					NumericStepper(e.currentTarget).stepSize = 10;
+					NumericalStepper(e.currentTarget).stepSize = 10;
 				}
 			}
 
 
 			private function onKeyUp(e:KeyboardEvent):void
 			{
-				if (precizeStepping) {
-					if (NumericStepper(e.currentTarget).stepSize != 0.1) {
-						NumericStepper(e.currentTarget).stepSize = 0.1;
-					}
-				} else {
-					if (NumericStepper(e.currentTarget).stepSize != 1) {
-						NumericStepper(e.currentTarget).stepSize = 1;
-					}
+				if (NumericalStepper(e.currentTarget).stepSize != 1) {
+					NumericalStepper(e.currentTarget).stepSize = 1;
 				}
 			}
 

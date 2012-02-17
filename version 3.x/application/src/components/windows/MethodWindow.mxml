@@ -34,9 +34,8 @@
 				returnWindow.name = "Return: " + _item.returnType;
 				rightWindow.addPanelItem(returnWindow);
 				
-				MonsterDebuggerUtils.checkWindow(nativeWindow);
+				MonsterDebuggerUtils.loadWindowOptions(nativeWindow, "com.demonsters.debugger.MethodWindow");
 				visible = true;
-				activate();
 				
 				// Set on top
 				if (MonsterDebuggerMenu.mainWindow.alwaysInFront) {
@@ -53,6 +52,14 @@
 
 				methodWindow.wordwrapCheck.addEventListener(MouseEvent.CLICK, onWordwrap);
 				onWordwrap(null);
+				
+				nativeWindow.addEventListener(Event.CLOSING, saveWindowOptions, false, 0, true);
+			}
+			
+			
+			private function saveWindowOptions(e:Event):void
+			{
+				MonsterDebuggerUtils.saveWindowOptions(nativeWindow, "com.demonsters.debugger.MethodWindow");
 			}
 			
 

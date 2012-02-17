@@ -18,16 +18,13 @@
 			private function onInitialize():void
 			{
 				visible = false;
-				
-
 			}
 
 
 			private function onCreationComplete():void
 			{
-				MonsterDebuggerUtils.checkWindow(nativeWindow);
+				MonsterDebuggerUtils.loadWindowOptions(nativeWindow, "com.demonsters.debugger.HelpWindow");
 				visible = true;
-				activate();
 				
 				// Set on top
 				if (MonsterDebuggerMenu.mainWindow.alwaysInFront) {
@@ -59,6 +56,14 @@
 				// Add the panels
 				panel.addPanelItem(_panelHelp);
 				panel.addPanelItem(_panelAsdoc);
+				
+				nativeWindow.addEventListener(Event.CLOSING, saveWindowOptions, false, 0, true);
+			}
+			
+			
+			private function saveWindowOptions(e:Event):void
+			{
+				MonsterDebuggerUtils.saveWindowOptions(nativeWindow, "com.demonsters.debugger.HelpWindow");
 			}
 
 		]]>

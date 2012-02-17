@@ -25,7 +25,7 @@ package com.demonsters.debugger
 
 		public static const EXPORT_CLIENT_SWC:String = "exportclientclasses";
 		public static const EXPORT_CLIENT_MOBILE_SWC:String = "exportclientswc";
-
+	
 		public static const TOGGLE_TRACE_VIEW:String = "toggletraceview";
 		public static const TOGGLE_INSPECTOR:String = "toggleinspectorview";		
 		public static const TOGGLE_BREAKPOINT_VIEW:String = "togglebreakpointview"; 
@@ -42,7 +42,6 @@ package com.demonsters.debugger
 		public static const FEEDBACK:String = "feedback";
 		public static const AS3_REFERENCE:String = "as3reference";
 		public static const AS3_RUNTIME_ERRORS:String = "as3runtimeerrors";
-		public static const AS2_MIGRATION:String = "as2migration";
 		public static const RIA_GUIDE:String = "riaguide";
 		public static const FLASH_PLAYERS:String = "flashplayers";
 
@@ -81,7 +80,6 @@ package com.demonsters.debugger
 
 		private static var _as3RefMenuItem:NativeMenuItem;
 		private static var _as3RunMenuItem:NativeMenuItem;
-		private static var _as2MigMenuItem:NativeMenuItem;
 		private static var _riaGuideMenuItem:NativeMenuItem;
 		private static var _playersMenuItem:NativeMenuItem;
 
@@ -193,7 +191,7 @@ package com.demonsters.debugger
 			menu.addItemAt(fileMenuItem, 1);
 
 			// Create View menu
-			var viewMenuItem:NativeMenuItem = new NativeMenuItem("View");
+			var viewMenuItem:NativeMenuItem = new NativeMenuItem("View1");
 			viewMenuItem.submenu = createViewMenu();
 			menu.addItemAt(viewMenuItem, 3);
 
@@ -265,7 +263,7 @@ package com.demonsters.debugger
 			_exportClientMobileSWC.data = new Event(EXPORT_CLIENT_MOBILE_SWC);
 			_exportClientMobileSWC.addEventListener(Event.SELECT, eventHandler);
 			menuFile.addItem(_exportClientMobileSWC);
-
+			
 			menuFile.addItem(new NativeMenuItem("", true));
 
 			_closeTabItem = new NativeMenuItem("Close Tab");
@@ -435,11 +433,6 @@ package com.demonsters.debugger
 			_as3RunMenuItem.data = new Event(AS3_RUNTIME_ERRORS);
 			_as3RunMenuItem.addEventListener(Event.SELECT, eventHandler);
 			menu.addItem(_as3RunMenuItem);
-
-			_as2MigMenuItem = new NativeMenuItem("Actionscript 2.0 Migration");
-			_as2MigMenuItem.data = new Event(AS2_MIGRATION);
-			_as2MigMenuItem.addEventListener(Event.SELECT, eventHandler);
-			menu.addItem(_as2MigMenuItem);
 
 			_riaGuideMenuItem = new NativeMenuItem("Adobe Flash RIA Guide (PDF)");
 			_riaGuideMenuItem.data = new Event(RIA_GUIDE);

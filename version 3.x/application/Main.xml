@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
-<application xmlns="http://ns.adobe.com/air/application/2.6" minimumPatchLevel="0">
+<application xmlns="http://ns.adobe.com/air/application/3.0">
 	<id>com.demonsters.debugger</id>
 	<filename>Monster Debugger</filename>
 	<name>Monster Debugger</name>
-	<versionNumber>3.01</versionNumber>
+	<versionNumber>3.02</versionNumber>
 	<description>Open source debugger for Adobe Flash, Flex and AIR projects</description>
 	<copyright>Copyright 2011, De Monsters</copyright>
 	<initialWindow>

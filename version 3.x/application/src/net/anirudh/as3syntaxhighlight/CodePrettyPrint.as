@@ -7,7 +7,6 @@ package net.anirudh.as3syntaxhighlight
 	{
 
 		private var PR_TAB_WIDTH:int = 8;
-		private var PR:Object;
 		private var PR_NOCODE:String = 'nocode';
 
 		private function wordSet(words:Object):Object

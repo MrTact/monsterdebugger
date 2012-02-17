@@ -103,9 +103,6 @@ package controllers.panels
 			target = StringUtil.trim(target).toLowerCase();
 			label = StringUtil.trim(label).toLowerCase();
 			person = StringUtil.trim(person).toLowerCase();
-			
-			trace(person, label);
-			
 			var i:int;
 			
 			// Clone words

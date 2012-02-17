@@ -24,9 +24,8 @@
 			
 			private function onCreationComplete():void
 			{
-				MonsterDebuggerUtils.checkWindow(nativeWindow);
+				MonsterDebuggerUtils.loadWindowOptions(nativeWindow, "com.demonsters.debugger.AboutWindow");
 				visible = true;
-				activate();
 				
 				// Set on top
 				if (MonsterDebuggerMenu.mainWindow.alwaysInFront) {
@@ -40,7 +39,16 @@
 						// The users pressed ESC
 					}
 				});
+				
+				nativeWindow.addEventListener(Event.CLOSING, saveWindowOptions, false, 0, true);
 			}
+			
+			
+			private function saveWindowOptions(e:Event):void
+			{
+				MonsterDebuggerUtils.saveWindowOptions(nativeWindow, "com.demonsters.debugger.AboutWindow");
+			}
+			
 		]]>
 	</fx:Script>
 
@@ -49,7 +57,7 @@
 	<mx:Text width="320" top="20" left="20" fontSize="11" selectable="false">
 		<mx:htmlText>
 <![CDATA[
-<font size="16"><b>Monster Debugger 3.01</b></font>
+<font size="16"><b>Monster Debugger 3.02</b></font>
 
 Monster Debugger is an open source Adobe Flash, Flex and AIR debugger made by Digital Creative Agency De Monsters from Amsterdam. Monster Debugger is created in ActionScript 3 and Adobe AIR.
 

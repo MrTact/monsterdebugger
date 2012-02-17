@@ -52,7 +52,7 @@ package com.demonsters.debugger
 		/**
 		 * Add an item
 		 */
-		public static function add(client:MonsterDebuggerClient):void
+		public static function add(client:IMonsterDebuggerClient):void
 		{
 			// Return if no location is known
 			if (client.fileLocation == null || client.fileLocation == "") {

@@ -1,5 +1,8 @@
-package com.demonsters.debugger
+package com.demonsters.debugger.netgroup
 {
+	import com.demonsters.debugger.IMonsterDebuggerClient;
+	import com.demonsters.debugger.MonsterDebuggerConstants;
+	import com.demonsters.debugger.MonsterDebuggerData;
 	import flash.events.Event;
 	import flash.events.IOErrorEvent;
 	import flash.events.NetStatusEvent;
@@ -10,13 +13,9 @@ package com.demonsters.debugger
 	import flash.utils.ByteArray;
 
 
-	public final class MonsterDebuggerClient
+	public final class NetgroupClient implements IMonsterDebuggerClient
 	{
 
-		// Events
-		public static const STARTED:String = "started";
-		public static const DISCONNECTED:String = "disconnected";
-		
 		
 		// Properties
 		private var _id:String;
@@ -43,23 +42,18 @@ package com.demonsters.debugger
 		public function get playerType():String {
 			return _playerType;
 		}
-
 		public function get playerVersion():String {
 			return _playerVersion;
 		}
-
 		public function get isDebugger():Boolean {
 			return _isDebugger;
 		}
-
 		public function get isFlex():Boolean {
 			return _isFlex;
 		}
-
 		public function get fileTitle():String {
 			return _fileTitle;
 		}
-
 		public function get fileLocation():String {
 			return _fileLocation;
 		}
@@ -69,37 +63,46 @@ package com.demonsters.debugger
 		// Format: onData(data:MonsterDebuggerData):void;
 		// Format: onStart(target:MonsterDebuggerClient):void;
 		// Format: onDisconnect(target:MonsterDebuggerClient):void;
-		// Format: onError(target:MonsterDebuggerClient):void;
-		public var onData:Function;
-		public var onStart:Function;
-		public var onDisconnect:Function;
+		private var _onData:Function;
+		private var _onStart:Function;
+		private var _onDisconnect:Function;
 
-
+		public function get onData():Function {
+			return _onData;
+		}
+		public function get onStart():Function {
+			return _onStart;
+		}
+		public function get onDisconnect():Function {
+			return _onDisconnect;
+		}
+		public function set onData(value:Function):void {
+			_onData = value;
+		}
+		public function set onStart(value:Function):void {
+			_onStart = value;
+		}
+		public function set onDisconnect(value:Function):void {
+			_onDisconnect = value;
+		}
+		
+		
 		/**
 		 * Wrapper for socket
-		 * @param socket: Reference to the socket
-		 * @param id: NetGroup ID
 		 */
-		public function MonsterDebuggerClient(socket:Socket = null, group:NetGroup = null, id:String = null)
+		public function NetgroupClient(group:NetGroup, id:String)
 		{
 			// Save id
 			_group = group;
 			_id = id;
 
 			// Save socket and bytes
-			_socket = socket;
 			_bytes = new ByteArray();
 			_package = new ByteArray();
 			_length = 0;
 			_isAnotherDebugger = false;
 
 			// Configure listeners
-			if (_socket != null) {
-				_socket.addEventListener(Event.CLOSE, disconnect, false, 0, false);
-				_socket.addEventListener(IOErrorEvent.IO_ERROR, disconnect, false, 0, false);
-				_socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR, disconnect, false, 0, false);
-				_socket.addEventListener(ProgressEvent.SOCKET_DATA, dataHandler, false, 0, false);
-			}
 			if (_group != null) {
 				_group.addEventListener(NetStatusEvent.NET_STATUS, onGroupUpdates, false, 0, true);
 			}
@@ -122,10 +125,10 @@ package com.demonsters.debugger
 						_group.removeEventListener(NetStatusEvent.NET_STATUS, onGroupUpdates);
 						_group = null;
 						_id = null;
-						if (onDisconnect != null) onDisconnect(this);
-						onData = null;
-						onStart = null;
-						onDisconnect = null;
+						if (_onDisconnect != null) _onDisconnect(this);
+						_onData = null;
+						_onStart = null;
+						_onDisconnect = null;
 					}
 					break;
 				case "NetGroup.SendTo.Notify":
@@ -266,10 +269,10 @@ package com.demonsters.debugger
 				_group.removeEventListener(NetStatusEvent.NET_STATUS, onGroupUpdates);
 				_group = null;
 				_id = null;
-				if (onDisconnect != null) onDisconnect(this);
-				onData = null;
-				onStart = null;
-				onDisconnect = null;
+				if (_onDisconnect != null) _onDisconnect(this);
+				_onData = null;
+				_onStart = null;
+				_onDisconnect = null;
 				return;
 			}
 
@@ -287,13 +290,13 @@ package com.demonsters.debugger
 				send(MonsterDebuggerConstants.ID, {command:MonsterDebuggerConstants.COMMAND_BASE});
 
 				// Send the started command
-				if (onStart != null) onStart(this);
+				if (_onStart != null) _onStart(this);
 				return;
 			}
 
 			// Call the data handler
-			if (onData != null) {
-				onData(item);
+			if (_onData != null) {
+				_onData(item);
 			}
 		}
 		
@@ -308,10 +311,10 @@ package com.demonsters.debugger
 			_socket.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, disconnect);
 			_socket.removeEventListener(ProgressEvent.SOCKET_DATA, dataHandler);
 			event.stopImmediatePropagation();
-			if (onDisconnect != null) onDisconnect(this);
-			onData = null;
-			onStart = null;
-			onDisconnect = null;
+			if (_onDisconnect != null) _onDisconnect(this);
+			_onData = null;
+			_onStart = null;
+			_onDisconnect = null;
 		}
 	}
 }

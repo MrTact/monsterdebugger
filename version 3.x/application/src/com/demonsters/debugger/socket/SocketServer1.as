@@ -1,16 +1,12 @@
-package com.demonsters.debugger
+package com.demonsters.debugger.socket
 {
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
 	import flash.events.IOErrorEvent;
-	import flash.events.NetStatusEvent;
 	import flash.events.ProgressEvent;
 	import flash.events.SecurityErrorEvent;
 	import flash.events.ServerSocketConnectEvent;
 	import flash.events.TimerEvent;
-	import flash.net.GroupSpecifier;
-	import flash.net.NetConnection;
-	import flash.net.NetGroup;
 	import flash.net.ServerSocket;
 	import flash.net.Socket;
 	import flash.utils.ByteArray;
@@ -18,27 +14,19 @@ package com.demonsters.debugger
 	import flash.utils.Timer;
 
 
-	public class MonsterDebuggerServer
+	/**
+	 * This is the new server
+	 * running on port 5840
+	 */
+	public class SocketServer1
 	{
 
-		// Group pin
-		private static const PIN:String = "monsterdebugger";
-		
-		
 		// Properties
 		private static var _port:int;
 		private static var _server:ServerSocket;
 		private static var _clients:Dictionary;
 		private static var _dispatcher:EventDispatcher;
 		private static var _timer:Timer;
-		
-		
-		// Connection properties
-		private static var _multiCastIP:String = "225.225.0.1";
-		private static var _multiCastPort:String = "58000";
-		private static var _connection:NetConnection;
-		private static var _group:NetGroup;
-		private static var _id:String;
 		
 		
 		// Callback functions
@@ -52,18 +40,13 @@ package com.demonsters.debugger
 		public static function initialize():void
 		{
 			// Start the server
-			_port = 5800;
+			_port = 5840;
 			_clients = new Dictionary();
 			_server = new ServerSocket();
 			_dispatcher = new EventDispatcher();
 			_server.addEventListener(Event.CONNECT, onConnect, false, 0, false);
 			_timer = new Timer(500, 1);
 			_timer.addEventListener(TimerEvent.TIMER, bind, false, 0, false);
-
-			// Create rtfmp
-			_connection = new NetConnection();
-			_connection.addEventListener(NetStatusEvent.NET_STATUS, onNetStatus, false, 0, true);
-			_connection.connect('rtmfp:');
 
 			bind();
 		}
@@ -73,10 +56,6 @@ package com.demonsters.debugger
 		 * Stop server
 		 */
 		public static function stop():void {
-			if (_connection) {
-				_connection.close();
-				_connection = null;
-			}
 			if (_server) {
 				_server.close();
 				_server = null;
@@ -84,70 +63,15 @@ package com.demonsters.debugger
 		}
 		
 
-		/**
-		 * Called whenever something happens on the peer-to-peer connection.
-		 * Once the connection is established a group is joined.
-		 * Once the group was joined, we setup messaging.
-		 */
-		private static function onNetStatus(event:NetStatusEvent):void
-		{
-			switch (event.info.code) {
-				case "NetConnection.Connect.Success":
-					joinGroup();
-					break;
-				case "NetGroup.Connect.Success":
-					_id = _group.convertPeerIDToGroupAddress(_connection.nearID);
-					break;
-			}
-		}
-
-
-		/**
-		 * Creates a new or joins an existing NetGroup on the peer-2-peer connection
-		 * that allows multicast communication.
-		 */
-		private static function joinGroup():void
-		{
-			// Create group specifications
-			var groupSpec:GroupSpecifier = new GroupSpecifier(PIN);
-			groupSpec.ipMulticastMemberUpdatesEnabled = true;
-			groupSpec.routingEnabled = true;
-			groupSpec.addIPMulticastAddress(_multiCastIP + ':' + _multiCastPort);
-
-			// Create a new net group to receive posts
-			_group = new NetGroup(_connection, groupSpec.groupspecWithoutAuthorizations());
-			_group.addEventListener(NetStatusEvent.NET_STATUS, onGroupUpdates, false, 0, true);
-		}
-
-
-		/**
-		 * Called whenever something happens in the group we've joined on the peer-to-peer
-		 * group. Other neighbors messages are being evaluated and we send out our own
-		 * address as soon as we join successfully.
-		 */
-		private static function onGroupUpdates(event:NetStatusEvent):void
-		{
-			switch (event.info.code) {
-				case "NetGroup.Neighbor.Connect":
-					// Create a new client
-					var client:MonsterDebuggerClient = new MonsterDebuggerClient(null, _group, event.info.neighbor);
-					client.onStart = startClient;
-					client.onDisconnect = removeClient;
-					// Save client
-					_clients[client] = {};
-					break;
-			}
-		}
-
-
 		private static function bind(e:TimerEvent = null):void
 		{
 			if (_server.bound) {
 				_server.close();
 				_server = new ServerSocket();
+				_server.addEventListener(Event.CONNECT, onConnect, false, 0, false);
 			}
 			try {
-				_server.bind(_port, "127.0.0.1");
+				_server.bind(_port, "0.0.0.0");
 				_server.listen();
 			} catch(e:Error) {
 				_timer.reset();
@@ -163,7 +87,7 @@ package com.demonsters.debugger
 		{
 			for (var client:Object in _clients) {
 				if (_clients[client] == uid) {
-					MonsterDebuggerClient(client).send(id, data);
+					SocketClient(client).send(id, data);
 				}
 			}
 		}
@@ -194,9 +118,12 @@ package com.demonsters.debugger
 			// Read the bytes
 			var bytes:ByteArray = new ByteArray;
 			socket.readBytes(bytes, 0, socket.bytesAvailable);
+			bytes.position = 0;
 
 			// Read the command
 			var command:String = bytes.readUTFBytes(bytes.bytesAvailable);
+			
+			// Check XML crossdomain request
 			if (command == "<policy-file-request/>") {
 				
 				// Write the policy file
@@ -222,7 +149,7 @@ package com.demonsters.debugger
 			socket.removeEventListener(ProgressEvent.SOCKET_DATA, dataHandler);
 
 			// Create a new client
-			var client:MonsterDebuggerClient = new MonsterDebuggerClient(socket);
+			var client:SocketClient = new SocketClient(socket);
 			client.onStart = startClient;
 			client.onDisconnect = removeClient;
 
@@ -235,7 +162,7 @@ package com.demonsters.debugger
 		 * Client is started and ready for a tab
 		 * THIS IS A CALLBACK FUNCTION
 		 */
-		private static function startClient(client:MonsterDebuggerClient):void
+		private static function startClient(client:SocketClient):void
 		{
 			// Connect
 			if (onClientConnect != null) {
@@ -248,7 +175,7 @@ package com.demonsters.debugger
 		 * Client is done
 		 * THIS IS A CALLBACK FUNCTION
 		 */
-		private static function removeClient(client:MonsterDebuggerClient):void
+		private static function removeClient(client:SocketClient):void
 		{
 			client.onData = null;
 			client.onStart = null;

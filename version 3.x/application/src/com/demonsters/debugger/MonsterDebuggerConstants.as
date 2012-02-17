@@ -37,6 +37,7 @@ package com.demonsters.debugger
 		
 		
 		// Types
+		public static const TYPE_NULL:String = "null";
 		public static const TYPE_VOID:String = "void";
 		public static const TYPE_ARRAY:String = "Array";
 		public static const TYPE_BOOLEAN:String = "Boolean";
@@ -93,7 +94,6 @@ package com.demonsters.debugger
 
 		public static const URL_AS3_REFERENCE:String = "http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/index.html";
 		public static const URL_AS3_ERRORS:String = "http://help.adobe.com/en_US/FlashPlatform/reference/actionscript/3/runtimeErrors.html";
-		public static const URL_AS3_MIGRATION:String = "http://livedocs.adobe.com/flash/9.0/ActionScriptLangRefV3/migration.html";
 		public static const URL_AS3_RIA:String = "http://www.adobe.com/devnet-archive/actionscript/articles/atp_ria_guide/atp_ria_guide.pdf";
 		public static const URL_AS3_PLAYER:String = "http://www.adobe.com/support/flashplayer/downloads.html";
 

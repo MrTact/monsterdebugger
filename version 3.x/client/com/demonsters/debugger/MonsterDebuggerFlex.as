@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen, Joost Harts and Stijn van der Laan
  * @company 	De Monsters
  * @link 		http://www.MonsterDebugger.com
- * @version 	3.0
+ * @version 	3.02
  * 
  *
  * Special thanks to: 

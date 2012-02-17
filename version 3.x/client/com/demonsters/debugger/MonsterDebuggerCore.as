@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen, Joost Harts and Stijn van der Laan
  * @company 	De Monsters
  * @link 		http://www.MonsterDebugger.com
- * @version 	3.0
+ * @version 	3.02
  * 
  *
  * Special thanks to: 
@@ -88,10 +88,6 @@ package com.demonsters.debugger
 		// The stage needed for highlight
 		private static var _stage:Stage = null;
 		
-		
-		// Registered plugings
-		private static var _plugins:Object = {};
-
 		
 		// Highlight sprite
 		private static var _highlight:Sprite;
@@ -172,39 +168,6 @@ package com.demonsters.debugger
 		
 		/**
 		 * @private
-		 * See MonsterDebugger class.
-		 */
-		internal static function hasPlugin(id:String):Boolean
-		{
-			return (id in _plugins);
-		}
-		
-		
-		/**
-		 * @private
-		 * See MonsterDebugger class
-		 */
-		internal static function registerPlugin(id:String, target:MonsterDebuggerPlugin):void
-		{
-			if (id in _plugins) return;
-			_plugins[id] = target;
-		}
-		
-		
-		/**
-		 * @private
-		 * See MonsterDebugger class
-		 */
-		internal static function unregisterPlugin(id:String):void
-		{
-			if (id in _plugins) {
-				_plugins[id] = null;
-			}
-		}
-		
-		
-		/**
-		 * @private
 		 * See MonsterDebugger class
 		 */
 		internal static function trace(caller:*, object:*, person:String = "", label:String = "", color:uint = 0x000000, depth:int = 5):void
@@ -226,7 +189,7 @@ package com.demonsters.debugger
 					label:		label,
 					color:		color
 				};
-				
+		
 				// Send the data
 				send(data);
 			}
@@ -452,10 +415,6 @@ package com.demonsters.debugger
 				// Check if we should handle the call internaly
 				if (item.id == MonsterDebuggerCore.ID) {
 					handleInternal(item);
-				} else {
-					if (item.id in _plugins && _plugins[item.id] != null) {
-						MonsterDebuggerPlugin(_plugins[item.id]).handle(item);
-					}
 				}
 			}
 		}

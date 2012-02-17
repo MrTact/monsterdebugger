@@ -1,8 +1,10 @@
 package com.demonsters.debugger
 {
 	import flash.display.NativeWindow;
+	import flash.display.NativeWindowDisplayState;
 	import flash.display.Screen;
-	import flash.geom.Rectangle;
+	import flash.geom.Point;
+	import flash.net.SharedObject;
 
 
 	final public class MonsterDebuggerUtils
@@ -52,36 +54,104 @@ package com.demonsters.debugger
 				return "";
 			}
 		}
+		
+		
+		/**
+		 * Load window settings and show window
+		 */
+		public static function loadWindowOptions(window:NativeWindow, id:String):void
+		{
+			// Get the preferences
+			var so:SharedObject = SharedObject.getLocal(id);
+			
+			// Check if there is any data saved
+			if (so.data["saved"] == true)
+			{
+				// Bug with minimize and close:
+				// If you close a minimized window in Windows
+				// The x and y values are -32000
+				if (so.data["x"] != null) window.x = so.data["x"];
+				if (so.data["y"] != null) window.y = so.data["y"];
+				if (so.data["width"] != null) window.width = so.data["width"];
+				if (so.data["height"] != null) window.height = so.data["height"];
+			}
 
+			// First check if the window is on a screen
+			// If not we resize the window to match the main screen size
+			// Then we center the window on the main screen
+			var screen:Screen = getScreenUnderPoint(new Point(window.x, window.y));
+			if (screen == null) {
+				screen = Screen.mainScreen;
+			}
+			
+			// Check if the window is in a screen
+			if (window.x + window.width < screen.bounds.x || window.x > screen.bounds.x + screen.bounds.width) {
+				if (window.width > screen.bounds.width) {
+					window.width = screen.bounds.width;
+				}
+				window.x = int((screen.bounds.width - window.width) * 0.5);
+			}
+			if (window.y + window.height < screen.bounds.y || window.y > screen.bounds.y + screen.bounds.height) {
+				if (window.height > screen.bounds.height) {
+					window.height = screen.bounds.height;
+				}
+				window.y = int((screen.bounds.height - window.height) * 0.5);
+			}
+			
+			// Show window
+			window.visible = true;
+			window.activate();
+			if (so.data["maximized"] == true) {
+				window.maximize();
+			}
+
+			// Save SO
+			saveWindowOptions(window, id);
+		}
+		
 		
 		/**
 		 * Allign to screen
 		 */
-		public static function checkWindow(window:NativeWindow):void
+		public static function saveWindowOptions(window:NativeWindow, id:String):void
 		{
-			// Check if window is onscreen
-			var main:Screen = Screen.mainScreen;
+			// Get the preferences
+			var so:SharedObject = SharedObject.getLocal(id);
+			
+			// Save the data
+			if (!window.closed) {
+				
+				// Check for maximized or minimized options
+				if (window.displayState == NativeWindowDisplayState.MAXIMIZED) {
+					so.data["maximized"] = true;
+				} else if (window.displayState == NativeWindowDisplayState.NORMAL) {
+			 		so.data["maximized"] = false;
+			 		so.data["x"] = window.x;
+					so.data["y"] = window.y;
+			 		so.data["width"] = window.width;
+					so.data["height"] = window.height;
+				}
+				
+				// Save
+				so.data["saved"] = true;
+				so.flush();
+			}
+		}
+		
+		
+		/**
+		 * Get the screen under a point
+		 */
+		public static function getScreenUnderPoint(point:Point):Screen
+		{
 			var screens:Array = Screen.screens;
-			var bounds:Rectangle = window.bounds.clone();
-			var onScreen:Boolean = false;
 			for (var i:int = 0; i < screens.length; i++) {
-				if (Screen(screens[i]).bounds.intersects(bounds)) {
-					onScreen = true;
+				var screen:Screen = screens[i];
+				if (screen.bounds.containsPoint(point)) {
+					return screen;
 				}
 			}
-
-			// Center if not onscreen
-			if (!onScreen) {
-				if (bounds.width > int(main.bounds.width * 0.9)) {
-					bounds.width = int(main.bounds.width * 0.9);
-				}
-				if (bounds.height > int(main.bounds.height * 0.9)) {
-					bounds.height = int(main.bounds.height * 0.9);
-				}
-				bounds.x = int((main.bounds.width - bounds.width) / 2);
-				bounds.y = int((main.bounds.height - bounds.height) / 2);
-				window.bounds = bounds;
-			}
+			return null;
 		}
 	}
 }

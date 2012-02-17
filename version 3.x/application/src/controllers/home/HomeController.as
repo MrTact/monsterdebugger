@@ -4,7 +4,7 @@ package controllers.home
 	import components.home.HomeRecentItem;
 	import components.tabs.TabContainer;
 	import spark.events.IndexChangeEvent;
-	import com.demonsters.debugger.MonsterDebuggerClient;
+	import com.demonsters.debugger.IMonsterDebuggerClient;
 	import com.demonsters.debugger.MonsterDebuggerConstants;
 	import com.demonsters.debugger.MonsterDebuggerHistory;
 	import com.demonsters.debugger.MonsterDebuggerHistoryItem;
@@ -155,8 +155,10 @@ package controllers.home
 		 */
 		private function generateExampleCode(event:IndexChangeEvent = null):void
 		{
+			/*FDT_IGNORE*/
+			
 			// Actionscript
-			if (_tab.dropdownType.selectedIndex == 0) {
+			if (_tab.dropdownType.selectedIndex != 2 && _tab.dropdownType.selectedIndex == 0) {
 				var exampleAS3:String = 'package {' + '\n';
 				exampleAS3 += '' + '\n';
 				exampleAS3 += '    import com.demonsters.debugger.MonsterDebugger;' + '\n';
@@ -174,9 +176,9 @@ package controllers.home
 				exampleAS3 += '}';
 				_tab.codeField.text = exampleAS3;
 			}
-
+			
 			// MXML
-			if (_tab.dropdownType.selectedIndex == 1) {
+			if (_tab.dropdownType.selectedIndex != 2 && _tab.dropdownType.selectedIndex == 1) {
 				var exampleMXML:String = '<?xml version="1.0" encoding="utf-8"?>' + '\n';
 				exampleMXML += '<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009"  xmlns:s="library://ns.adobe.com/flex/spark" xmlns:mx="library://ns.adobe.com/flex/mx"  xmlns:debugger="com.demonsters.debugger.*" creationComplete="onCreationComplete()">' + '\n';
 				exampleMXML += '    <fx:Script>' + '\n';
@@ -200,7 +202,10 @@ package controllers.home
 				exampleMXML += '</s:Application>' + '\n';
 				_tab.codeField.text = exampleMXML;
 			}
-
+			
+			
+			/*FDT_IGNORE*/
+			
 			// Desktop
 			if (_tab.dropdownTarget.selectedIndex == 0) {
 				_exportFile = File.applicationDirectory.resolvePath("export/MonsterDebugger.swc");
@@ -228,7 +233,7 @@ package controllers.home
 		/**
 		 * Add a recent item
 		 */
-		public function addRecent(client:MonsterDebuggerClient):void
+		public function addRecent(client:IMonsterDebuggerClient):void
 		{
 			MonsterDebuggerHistory.add(client);
 			MonsterDebuggerHistory.save();

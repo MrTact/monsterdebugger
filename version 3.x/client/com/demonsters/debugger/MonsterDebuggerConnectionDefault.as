@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen, Joost Harts and Stijn van der Laan
  * @company 	De Monsters
  * @link 		http://www.MonsterDebugger.com
- * @version 	3.0
+ * @version 	3.02
  * 
  *
  * Special thanks to: 
@@ -78,9 +78,6 @@ package com.demonsters.debugger
 		private var _queue:Array = [];
 
 		
-		// Connect handler
-		private var _onConnect:Function;
-		
 		
 		public function MonsterDebuggerConnectionDefault()
 		{
@@ -96,7 +93,7 @@ package com.demonsters.debugger
 			_connecting = false;
 			_process = false;
 			_address = "127.0.0.1";
-			_port = 5800;
+			_port = 5840;
 			_timeout = new Timer(2000, 1);
 			_timeout.addEventListener(TimerEvent.TIMER, closeHandler, false, 0, false);
 			_retry = new Timer(1000, 1);
@@ -109,14 +106,6 @@ package com.demonsters.debugger
 		 */
 		public function set address(value:String):void {
 			_address = value;
-		}
-		
-		
-		/**
-		 * @param value: The callback function.
-		 */
-		public function set onConnect(value:Function):void {
-			_onConnect = value;
 		}
 		
 		
@@ -251,11 +240,6 @@ package com.demonsters.debugger
 		{
 			_timeout.stop();
 			_retry.stop();
-			
-			// Do the callback
-			if (_onConnect != null) {
-				_onConnect();
-			}
 			
 			// Set the flags and clear the bytes
 			_connecting = false;

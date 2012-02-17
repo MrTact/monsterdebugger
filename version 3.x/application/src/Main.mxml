@@ -12,19 +12,20 @@
 	</fx:Style>
 	<fx:Script>
 		<![CDATA[
-
 			import components.plus.TabCloseable;
 			import components.windows.AboutWindow;
 			import components.windows.HelpWindow;
 			import controllers.home.HomeController;
 			import controllers.tabs.TabController;
-			import com.demonsters.debugger.MonsterDebuggerClient;
+			import com.demonsters.debugger.IMonsterDebuggerClient;
 			import com.demonsters.debugger.MonsterDebuggerConstants;
 			import com.demonsters.debugger.MonsterDebuggerHistory;
 			import com.demonsters.debugger.MonsterDebuggerMenu;
-			import com.demonsters.debugger.MonsterDebuggerServer;
 			import com.demonsters.debugger.MonsterDebuggerUpdater;
 			import com.demonsters.debugger.MonsterDebuggerUtils;
+			import com.demonsters.debugger.netgroup.NetgroupServer;
+			import com.demonsters.debugger.socket.SocketServer1;
+			import com.demonsters.debugger.socket.SocketServer2;
 			import mx.events.IndexChangedEvent;
 			import mx.events.ListEvent;
 			import flash.desktop.NativeApplication;
@@ -43,34 +44,21 @@
 			 */
 			private function onInit():void
 			{
-				// Load the preferences
-				// XXX: Release 3.1
-//				if (MonsterDebuggerPreferences.exists) {
-//					MonsterDebuggerPreferences.load();
-//					var bounds:Rectangle = new Rectangle();
-//					bounds.x = MonsterDebuggerPreferences.getProperty("x");
-//					bounds.y = MonsterDebuggerPreferences.getProperty("y");
-//					bounds.width = MonsterDebuggerPreferences.getProperty("width");
-//					bounds.height = MonsterDebuggerPreferences.getProperty("height");
-//					nativeWindow.bounds = bounds;
-//				} else {
-//					MonsterDebuggerPreferences.setProperty("x", nativeWindow.bounds.x);
-//					MonsterDebuggerPreferences.setProperty("y", nativeWindow.bounds.y);
-//					MonsterDebuggerPreferences.setProperty("width", nativeWindow.bounds.width);
-//					MonsterDebuggerPreferences.setProperty("height", nativeWindow.bounds.height);
-//				}
-
-				// Start the server
-				MonsterDebuggerServer.initialize();
-				MonsterDebuggerServer.onClientConnect = onClientConnect;
-
+				// Start the servers
+				SocketServer1.initialize();
+				SocketServer1.onClientConnect = onClientConnect;
+				SocketServer2.initialize();
+				SocketServer2.onClientConnect = onClientConnect;
+				NetgroupServer.initialize();
+				NetgroupServer.onClientConnect = onClientConnect;
+				
 				// Check for update
 				MonsterDebuggerUpdater.check();
 
 				// Center window if the window is outside a screen
-				MonsterDebuggerUtils.checkWindow(nativeWindow);
+				MonsterDebuggerUtils.loadWindowOptions(nativeWindow, "com.demonsters.debugger.MainWindow");
 				
-				// Load history
+				// Load history (recent files)
 				MonsterDebuggerHistory.load();
 
 				// Create the home tab
@@ -86,7 +74,6 @@
 				MonsterDebuggerMenu.addEventListener(MonsterDebuggerMenu.DEBUGGER_GAME, urlHandler);
 				MonsterDebuggerMenu.addEventListener(MonsterDebuggerMenu.PRODUCT_WEBSITE, urlHandler);
 				MonsterDebuggerMenu.addEventListener(MonsterDebuggerMenu.FEEDBACK, urlHandler);
-				MonsterDebuggerMenu.addEventListener(MonsterDebuggerMenu.AS2_MIGRATION, urlHandler);
 				MonsterDebuggerMenu.addEventListener(MonsterDebuggerMenu.AS3_REFERENCE, urlHandler);
 				MonsterDebuggerMenu.addEventListener(MonsterDebuggerMenu.AS3_RUNTIME_ERRORS, urlHandler);
 				MonsterDebuggerMenu.addEventListener(MonsterDebuggerMenu.RIA_GUIDE, urlHandler);
@@ -94,6 +81,7 @@
 				
 				// Close
 				NativeApplication.nativeApplication.addEventListener(Event.EXITING, exitApplication, false, 0, true);
+				nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGING, windowStateHandler, false, 0, true);
 				nativeWindow.addEventListener(Event.CLOSING, closeApplication, false, 0, true);
 				
 				container.viewstack.addEventListener(IndexChangedEvent.CHANGE, onTabChange, false, 0, true);
@@ -144,7 +132,7 @@
 			/**
 			 * Created a new tab for the client
 			 */
-			private function onClientConnect(client:MonsterDebuggerClient):void
+			private function onClientConnect(client:IMonsterDebuggerClient):void
 			{
 				var i:int = 0;
 				for (i = 0; i < tabs.length; i++) {
@@ -194,9 +182,6 @@
 					case MonsterDebuggerMenu.FEEDBACK:
 						navigateToURL(new URLRequest(MonsterDebuggerConstants.URL_FEEDBACK));
 						break;
-					case MonsterDebuggerMenu.AS2_MIGRATION:
-						navigateToURL(new URLRequest(MonsterDebuggerConstants.URL_AS3_MIGRATION));
-						break;
 					case MonsterDebuggerMenu.AS3_REFERENCE:
 						navigateToURL(new URLRequest(MonsterDebuggerConstants.URL_AS3_REFERENCE));
 						break;
@@ -226,11 +211,26 @@
 			
 			
 			/**
+			 * Main window is maximized, save previous position
+			 */
+			private function windowStateHandler(event:NativeWindowDisplayStateEvent):void
+			{
+				// Save when we maximize
+				if (event.afterDisplayState == NativeWindowDisplayState.MAXIMIZED) {
+					MonsterDebuggerUtils.saveWindowOptions(nativeWindow, "com.demonsters.debugger.MainWindow");
+				}
+			}
+			
+			
+			/**
 			 * Application is closing
 			 */
 			private function closeApplication(e:Event):void
 			{
-				MonsterDebuggerServer.stop();
+				MonsterDebuggerUtils.saveWindowOptions(nativeWindow, "com.demonsters.debugger.MainWindow");
+				SocketServer1.stop();
+				SocketServer2.stop();
+				NetgroupServer.stop();
 				var windows:Array = NativeApplication.nativeApplication.openedWindows;
 				for (var i:int = 0; i < windows.length; i++) {
 					windows[i].close();
@@ -239,7 +239,9 @@
 			}
 			private function exitApplication(e:Event):void
 			{
-				MonsterDebuggerServer.stop();
+				SocketServer1.stop();
+				SocketServer2.stop();
+				NetgroupServer.stop();
 				var windows:Array = NativeApplication.nativeApplication.openedWindows;
 				for (var i:int = 0; i < windows.length; i++) {
 					windows[i].close();

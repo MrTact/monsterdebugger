@@ -16,7 +16,7 @@
  * @author		Ferdi Koomen, Joost Harts and Stijn van der Laan
  * @company 	De Monsters
  * @link 		http://www.MonsterDebugger.com
- * @version 	3.0
+ * @version 	3.02
  * 
  *
  * Special thanks to: 
@@ -75,14 +75,6 @@ package com.demonsters.debugger
 		 */
 		internal static function set address(value:String):void {
 			connector.address = value;
-		}
-		
-		
-		/**
-		 * @param value: The callback function.
-		 */
-		internal static function set onConnect(value:Function):void {
-			connector.onConnect = value; 
 		}
 		
 		
