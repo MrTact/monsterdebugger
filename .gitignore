@@ -1,0 +1,5 @@
+.actionScriptProperties
+.flexProperties
+.project
+version 3.x/application/bin-debug/*
+version 3.x/application/.settings/*
