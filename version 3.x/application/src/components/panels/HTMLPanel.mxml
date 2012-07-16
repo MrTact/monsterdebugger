@@ -19,6 +19,8 @@
 		<![CDATA[
 		
 			private var _location:String;
+			
+			[Bindable]
 			private var _scrollPolicy:String = "auto";
 			
 			public function set location(value:String):void

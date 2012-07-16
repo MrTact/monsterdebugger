@@ -1,5 +1,10 @@
 package controllers.tabs
 {
+	import com.demonsters.debugger.IMonsterDebuggerClient;
+	import com.demonsters.debugger.MonsterDebuggerConstants;
+	import com.demonsters.debugger.MonsterDebuggerData;
+	import com.demonsters.debugger.MonsterDebuggerMenu;
+	
 	import components.panels.ApplicationPanel;
 	import components.panels.BreakpointsPanel;
 	import components.panels.MethodPanel;
@@ -8,20 +13,21 @@ package controllers.tabs
 	import components.panels.TracePanel;
 	import components.tabs.Tab;
 	import components.tabs.TabContainer;
+	
 	import controllers.panels.ApplicationController;
 	import controllers.panels.BreakpointsController;
 	import controllers.panels.MethodController;
 	import controllers.panels.MonitorController;
 	import controllers.panels.PropertiesController;
 	import controllers.panels.TraceController;
+	
 	import events.PanelEvent;
-	import com.demonsters.debugger.IMonsterDebuggerClient;
-	import com.demonsters.debugger.MonsterDebuggerConstants;
-	import com.demonsters.debugger.MonsterDebuggerData;
-	import com.demonsters.debugger.MonsterDebuggerMenu;
-	import mx.events.FlexEvent;
+	
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
+	import flash.net.SharedObject;
+	
+	import mx.events.FlexEvent;
 
 
 	public final class TabController extends EventDispatcher
@@ -67,11 +73,13 @@ package controllers.tabs
 		 */
 		public function TabController(container:TabContainer, aClient:IMonsterDebuggerClient)
 		{
-			_toggleLiveApplicationViewMenuItem = true;
-			_toggleBreakpointsViewMenuItem = true;
-			_toggleMonitorViewMenuItem = true;
-			_toggleTraceViewMenuItem = true;
-
+			var so:SharedObject = SharedObject.getLocal("com.demonsters.debugger.TabController");
+			
+			_toggleLiveApplicationViewMenuItem = getSharedSetting(so, "_toggleLiveApplicationViewMenuItem", true);
+			_toggleBreakpointsViewMenuItem = getSharedSetting(so, "_toggleBreakpointsViewMenuItem", true);
+			_toggleMonitorViewMenuItem = getSharedSetting(so, "_toggleMonitorViewMenuItem", true);
+			_toggleTraceViewMenuItem = getSharedSetting(so, "_toggleTraceViewMenuItem", true);
+			
 			// Create a new tab
 			_tab = new Tab();
 			_tabContainer = container;
@@ -84,7 +92,22 @@ package controllers.tabs
 			// Highlight and inspect
 			MonsterDebuggerMenu.addEventListener(MonsterDebuggerMenu.HIGHLIGHT_INSPECT, menuHighlight);
 		}
+		
+		protected function getSharedSetting(so:SharedObject, key:String, def:*):*
+		{
+			return (key in so.data) ? so.data[key] : def;
+		}
 
+		protected function saveSharedSettings():void
+		{
+			var so:SharedObject = SharedObject.getLocal("com.demonsters.debugger.TabController");
+			
+			so.data._toggleLiveApplicationViewMenuItem = _toggleLiveApplicationViewMenuItem;
+			so.data._toggleBreakpointsViewMenuItem = _toggleBreakpointsViewMenuItem;
+			so.data._toggleMonitorViewMenuItem = _toggleMonitorViewMenuItem;
+			so.data._toggleTraceViewMenuItem = _toggleTraceViewMenuItem;
+			so.flush();
+		}
 
 		private function menuHighlight(event:Event):void
 		{
@@ -265,6 +288,7 @@ package controllers.tabs
 				_tab.bottomPanel.visible = _toggleTraceViewMenuItem;
 				_tab.bottomPanel.includeInLayout = _toggleTraceViewMenuItem;
 				windowCheck();
+				saveSharedSettings();
 			}
 		}
 		
@@ -278,6 +302,7 @@ package controllers.tabs
 				_tab.leftPanel.visible = _toggleLiveApplicationViewMenuItem;
 				_tab.leftPanel.includeInLayout = _toggleLiveApplicationViewMenuItem;
 				windowCheck();
+				saveSharedSettings();
 			}
 		}
 
@@ -289,6 +314,7 @@ package controllers.tabs
 				_tab.rightPanelTop.visible = _toggleBreakpointsViewMenuItem;
 				_tab.rightPanelTop.includeInLayout = _toggleBreakpointsViewMenuItem;
 				windowCheck();
+				saveSharedSettings();
 			}
 		}
 
@@ -300,6 +326,7 @@ package controllers.tabs
 				_tab.rightPanelBottom.visible = _toggleMonitorViewMenuItem;
 				_tab.rightPanelBottom.includeInLayout = _toggleMonitorViewMenuItem;
 				windowCheck();
+				saveSharedSettings();
 			}
 		}
 
@@ -368,6 +395,8 @@ package controllers.tabs
 
 				_tab.rightPanelBottom.visible = _toggleMonitorViewMenuItem;
 				_tab.rightPanelBottom.includeInLayout = _toggleMonitorViewMenuItem;
+				
+				windowCheck();
 			}
 			_active = value;
 		}

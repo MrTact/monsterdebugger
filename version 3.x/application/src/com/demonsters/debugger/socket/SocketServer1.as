@@ -57,7 +57,9 @@ package com.demonsters.debugger.socket
 		 */
 		public static function stop():void {
 			if (_server) {
-				_server.close();
+				if (_server.localAddress) {
+					_server.close();
+				}
 				_server = null;
 			}
 		}

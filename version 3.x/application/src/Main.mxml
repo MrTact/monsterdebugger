@@ -12,11 +12,6 @@
 	</fx:Style>
 	<fx:Script>
 		<![CDATA[
-			import components.plus.TabCloseable;
-			import components.windows.AboutWindow;
-			import components.windows.HelpWindow;
-			import controllers.home.HomeController;
-			import controllers.tabs.TabController;
 			import com.demonsters.debugger.IMonsterDebuggerClient;
 			import com.demonsters.debugger.MonsterDebuggerConstants;
 			import com.demonsters.debugger.MonsterDebuggerHistory;
@@ -26,10 +21,19 @@
 			import com.demonsters.debugger.netgroup.NetgroupServer;
 			import com.demonsters.debugger.socket.SocketServer1;
 			import com.demonsters.debugger.socket.SocketServer2;
-			import mx.events.IndexChangedEvent;
-			import mx.events.ListEvent;
+			
+			import components.plus.TabCloseable;
+			import components.windows.AboutWindow;
+			import components.windows.HelpWindow;
+			
+			import controllers.home.HomeController;
+			import controllers.tabs.TabController;
+			
 			import flash.desktop.NativeApplication;
 			import flash.filesystem.File;
+			
+			import mx.events.IndexChangedEvent;
+			import mx.events.ListEvent;
 
 
 			// Controllers and basic windows
@@ -82,6 +86,8 @@
 				// Close
 				NativeApplication.nativeApplication.addEventListener(Event.EXITING, exitApplication, false, 0, true);
 				nativeWindow.addEventListener(NativeWindowDisplayStateEvent.DISPLAY_STATE_CHANGING, windowStateHandler, false, 0, true);
+				nativeWindow.addEventListener(NativeWindowBoundsEvent.RESIZE, windowBoundsHandler, false, 0, true);
+				nativeWindow.addEventListener(NativeWindowBoundsEvent.MOVE, windowBoundsHandler, false, 0, true);
 				nativeWindow.addEventListener(Event.CLOSING, closeApplication, false, 0, true);
 				
 				container.viewstack.addEventListener(IndexChangedEvent.CHANGE, onTabChange, false, 0, true);
@@ -138,6 +144,7 @@
 				for (i = 0; i < tabs.length; i++) {
 					if (client.fileLocation == tabs[i].client.fileLocation && client.fileTitle == tabs[i].client.fileTitle) {
 						tabs[i].client = client;
+						tabs[i].active = true;
 						return;
 					}
 				}
@@ -219,6 +226,14 @@
 				if (event.afterDisplayState == NativeWindowDisplayState.MAXIMIZED) {
 					MonsterDebuggerUtils.saveWindowOptions(nativeWindow, "com.demonsters.debugger.MainWindow");
 				}
+			}
+			
+			/**
+			 * Main window is moving/resizing, save previous position
+			 */
+			private function windowBoundsHandler(event:NativeWindowBoundsEvent):void
+			{
+				MonsterDebuggerUtils.saveWindowOptions(nativeWindow, "com.demonsters.debugger.MainWindow");
 			}
 			
 			
