@@ -1,18 +1,22 @@
 package controllers.panels
 {
+	import com.demonsters.debugger.MonsterDebuggerConstants;
+	
 	import components.Filter;
 	import components.panels.ApplicationPanel;
+	
 	import events.PanelEvent;
-	import com.demonsters.debugger.MonsterDebuggerConstants;
+	
+	import flash.events.ContextMenuEvent;
+	import flash.events.Event;
+	import flash.events.EventDispatcher;
+	import flash.events.MouseEvent;
+	
 	import mx.collections.XMLListCollection;
 	import mx.events.FlexEvent;
 	import mx.events.ListEvent;
 	import mx.events.TreeEvent;
 	import mx.utils.StringUtil;
-	import flash.events.ContextMenuEvent;
-	import flash.events.Event;
-	import flash.events.EventDispatcher;
-	import flash.events.MouseEvent;
 
 
 	public final class ApplicationController extends EventDispatcher
@@ -82,7 +86,6 @@ package controllers.panels
 		{
 			// Vars needed for the loops
 			var data:XMLList = _data.copy();
-			var targets:XMLList = data..@target;
 			var children:XMLList;
 			var openOld:Array;
 			var openNew:Array;
@@ -92,7 +95,7 @@ package controllers.panels
 			data.setChildren(children);
 
 			// Get the filtered targets
-			targets = data..@target;
+			var targets:XMLList = data..@target;
 
 			// Get the open items
 			openOld = _panel.tree.openItems as Array;
@@ -164,21 +167,28 @@ package controllers.panels
 			if (item.children().length() != 0) {
 				return true;
 			}
+
 			
+			// Don't show simple scalar types in the tree
+			var type:String = String(item.@type);
+			if (type == null) type = "";
+			if (type in MonsterDebuggerConstants.SIMPLE_SCALAR_TYPES) {
+				return false;
+			}
+
 			// Get the data
 			var name:String = String(item.@name);
 			var value:String = String(item.@value);
 			var label:String = String(item.@label);
-			var type:String = String(item.@type);
 			if (name == null) name = "";
 			if (value == null) value = "";
 			if (label == null) label = "";
-			if (type == null) type = "";
 			name = StringUtil.trim(name).toLowerCase();
 			value = StringUtil.trim(value).toLowerCase();
 			label = StringUtil.trim(label).toLowerCase();
 			type = StringUtil.trim(type).toLowerCase();
 
+			
 			var i:int;
 			
 			// Clone words

@@ -59,6 +59,8 @@ package com.demonsters.debugger
 		public static const TYPE_NOT_FOUND:String = "Not found";
 		public static const TYPE_UNREADABLE:String = "Unreadable";
 		
+		// Yes, technically a string is not a scalar type. Sue me.
+		public static const SIMPLE_SCALAR_TYPES:Object = {TYPE_STRING:1, TYPE_BOOLEAN:1, TYPE_NUMBER:1, TYPE_INT:1, TYPE_UINT:1};
 		
 		// Access types
 		public static const ACCESS_VARIABLE:String = "variable";
