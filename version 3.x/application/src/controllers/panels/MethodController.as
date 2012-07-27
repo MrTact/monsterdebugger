@@ -1,14 +1,18 @@
 package controllers.panels
 {
+	import com.demonsters.debugger.MonsterDebuggerConstants;
+	
 	import components.panels.MethodPanel;
 	import components.windows.MethodWindow;
+	
 	import events.MethodEvent;
-	import com.demonsters.debugger.MonsterDebuggerConstants;
+	
+	import flash.events.EventDispatcher;
+	import flash.utils.Dictionary;
+	
 	import mx.collections.ArrayCollection;
 	import mx.events.FlexEvent;
 	import mx.events.ListEvent;
-	import flash.events.EventDispatcher;
-	import flash.utils.Dictionary;
 
 
 	public final class MethodController extends EventDispatcher
@@ -69,9 +73,7 @@ package controllers.panels
 
 					// Check if we can supply the parameter type
 					if (paramOptional == "false") {
-						if (paramType != MonsterDebuggerConstants.TYPE_STRING && paramType != MonsterDebuggerConstants.TYPE_BOOLEAN && paramType != MonsterDebuggerConstants.TYPE_NUMBER && paramType != MonsterDebuggerConstants.TYPE_INT && paramType != MonsterDebuggerConstants.TYPE_UINT) {
-							runnable = false;
-						}
+						runnable = paramType in MonsterDebuggerConstants.SIMPLE_SCALAR_TYPES;
 					}
 				}
 				if (runnable) {
@@ -130,9 +132,7 @@ package controllers.panels
 								var type:String = parameters[n].@type;
 								var optional:String = parameters[n].@optional;
 								if (optional == "false") {
-									if (type != MonsterDebuggerConstants.TYPE_STRING && type != MonsterDebuggerConstants.TYPE_BOOLEAN && type != MonsterDebuggerConstants.TYPE_NUMBER && type != MonsterDebuggerConstants.TYPE_INT && type != MonsterDebuggerConstants.TYPE_UINT) {
-										runnable = false;
-									}
+									runnable = type in MonsterDebuggerConstants.SIMPLE_SCALAR_TYPES;
 								}
 							}
 							var iconType:Class;

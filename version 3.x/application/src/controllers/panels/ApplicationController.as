@@ -352,7 +352,7 @@ package controllers.panels
 				objTarget = event.currentTarget.selectedItem.@target;
 
 				// Only get the info from objects
-				if (objType != MonsterDebuggerConstants.TYPE_WARNING && objType != MonsterDebuggerConstants.TYPE_STRING && objType != MonsterDebuggerConstants.TYPE_BOOLEAN && objType != MonsterDebuggerConstants.TYPE_NUMBER && objType != MonsterDebuggerConstants.TYPE_INT && objType != MonsterDebuggerConstants.TYPE_UINT && objType != MonsterDebuggerConstants.TYPE_FUNCTION) {
+				if (!objType in MonsterDebuggerConstants.SIMPLE_SCALAR_TYPES) {
 
 					// Send commands
 					_send({command:MonsterDebuggerConstants.COMMAND_HIGHLIGHT, target:objTarget});
@@ -376,7 +376,7 @@ package controllers.panels
 				var objTarget:String = _panel.tree.selectedItem.@target;
 				_send({command:MonsterDebuggerConstants.COMMAND_GET_OBJECT, target:objTarget});
 
-				if (objType != MonsterDebuggerConstants.TYPE_WARNING && objType != MonsterDebuggerConstants.TYPE_STRING && objType != MonsterDebuggerConstants.TYPE_BOOLEAN && objType != MonsterDebuggerConstants.TYPE_NUMBER && objType != MonsterDebuggerConstants.TYPE_INT && objType != MonsterDebuggerConstants.TYPE_UINT && objType != MonsterDebuggerConstants.TYPE_FUNCTION) {
+				if (!objType in MonsterDebuggerConstants.SIMPLE_SCALAR_TYPES) {
 
 					// Send commands
 					_send({command:MonsterDebuggerConstants.COMMAND_HIGHLIGHT, target:objTarget});

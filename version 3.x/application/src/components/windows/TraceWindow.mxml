@@ -9,6 +9,7 @@
 			import com.demonsters.debugger.MonsterDebuggerConstants;
 			import com.demonsters.debugger.MonsterDebuggerMenu;
 			import com.demonsters.debugger.MonsterDebuggerUtils;
+			
 			import mx.collections.XMLListCollection;
 
 			// Icons
@@ -133,7 +134,7 @@
 
 				var t:String = _xml.node.@type;
 				var l:int = _xml..node.length();
-				if (l == 2 && t == MonsterDebuggerConstants.TYPE_NULL || t == MonsterDebuggerConstants.TYPE_STRING || t == MonsterDebuggerConstants.TYPE_BOOLEAN || t == MonsterDebuggerConstants.TYPE_NUMBER || t == MonsterDebuggerConstants.TYPE_INT || t == MonsterDebuggerConstants.TYPE_UINT)
+				if (l == 2 && t == MonsterDebuggerConstants.TYPE_NULL || t in MonsterDebuggerConstants.SIMPLE_SCALAR_TYPES)
 				{
 				 	// Set the textfield
 				 	textArea.text = MonsterDebuggerUtils.htmlUnescape(_xml..node[1].@value);
